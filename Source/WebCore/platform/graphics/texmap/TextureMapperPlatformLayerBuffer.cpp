@@ -45,10 +45,6 @@ TextureMapperPlatformLayerBuffer::TextureMapperPlatformLayerBuffer(GLuint textur
 
 TextureMapperPlatformLayerBuffer::~TextureMapperPlatformLayerBuffer()
 {
-    if (m_unmanagedBufferDestructor) {
-        ASSERT(!m_hasManagedTexture);
-        m_unmanagedBufferDestructor();
-    }
 }
 
 bool TextureMapperPlatformLayerBuffer::canReuseWithoutReset(const IntSize& size, GC3Dint internalFormat)
