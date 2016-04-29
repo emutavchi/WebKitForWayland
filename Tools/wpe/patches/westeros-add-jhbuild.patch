@@ -1,0 +1,117 @@
+From e7e88bca0a6ae676f085cd5a71753a115c68884c Mon Sep 17 00:00:00 2001
+From: Eugene Mutavchi <emutavchi@productengine.com>
+Date: Wed, 27 Apr 2016 13:54:48 +0300
+Subject: [PATCH] Add Makefile.jhbuild
+
+---
+ Makefile.am      |  1 +
+ Makefile.jhbuild | 85 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 86 insertions(+)
+ create mode 100644 Makefile.jhbuild
+
+diff --git a/Makefile.am b/Makefile.am
+index f416500..f1cd4bf 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -5,6 +5,7 @@ AUTOMAKE_OPTIONS = subdir-objects
+ SUBDIRS = 
+ AM_CXXFLAGS= \
+ 	-I$(top_srcdir)/include \
++   -I${PKG_CONFIG_SYSROOT_DIR}/$(includedir) \
+    -I${PKG_CONFIG_SYSROOT_DIR}/$(includedir)/wayland \
+    $(WAYLAND_CLIENT_CFLAGS) $(WAYLAND_SERVER_CFLAGS) \
+    $(XKBCOMMON_CFLAGS)   
+diff --git a/Makefile.jhbuild b/Makefile.jhbuild
+new file mode 100644
+index 0000000..680128c
+--- /dev/null
++++ b/Makefile.jhbuild
+@@ -0,0 +1,85 @@
++WID=$(shell pwd)/../../Root
++XDGOPT ?= xdgv5
++
++all:  westeros-protocols westeros-simpleshell westeros-core
++
++clean: init
++
++cleanall: initall
++
++setenv= \
++	export PKG_CONFIG_PATH=$(WID)/lib/pkgconfig:$(WID)/share/pkgconfig && \
++	export ACLOCAL_PATH=$(WID)/share/aclocal && \
++	export ACLOCAL="aclocal -I $ACLOCAL_PATH"
++
++initall: init
++
++init:
++	cd protocol/version4 && rm -f *.h && rm -f *.c
++	cd protocol/version5 && rm -f *.h && rm -f *.c
++	cd simpleshell/protocol && rm -f *.h && rm -f *.c
++	cd simpleshell && rm -f *.o && rm -f *.lo && rm -rf .libs/*
++	rm -f *.o && rm -f *.lo && rm -f .libs/*
++
++westeros-protocols: xdg-shell-v4 xdg-shell-v5 simpleshell
++
++xdg-shell-v4: protocol/version4/xdg-shell-server-protocol.h \
++              protocol/version4/xdg-shell-protocol.c
++
++protocol/version4/xdg-shell-server-protocol.h: protocol/version4/xdg-shell.xml
++	export SCANNER_TOOL=${WID}/bin/wayland-scanner && \
++	make -C protocol
++
++protocol/version4/xdg-shell-protocol.c: protocol/version4/xdg-shell.xml
++	export SCANNER_TOOL=${WID}/bin/wayland-scanner && \
++	make -C protocol
++
++xdg-shell-v5: protocol/version5/xdg-shell-server-protocol.h \
++              protocol/version5/xdg-shell-protocol.c
++
++protocol/version5/xdg-shell-server-protocol.h: protocol/version5/xdg-shell.xml
++	export SCANNER_TOOL=${WID}/bin/wayland-scanner && \
++	make -C protocol
++
++protocol/version5/xdg-shell-protocol.c: protocol/version5/xdg-shell.xml
++	export SCANNER_TOOL=${WID}/bin/wayland-scanner && \
++	make -C protocol
++
++simpleshell: simpleshell/protocol/simpleshell-client-protocol.h \
++             simpleshell/protocol/simpleshell-server-protocol.h \
++             simpleshell/protocol/simpleshell-protocol.c
++
++simpleshell/protocol/simpleshell-client-protocol.h:
++	export SCANNER_TOOL=${WID}/bin/wayland-scanner && \
++	make -C simpleshell/protocol
++
++simpleshell/protocol/simpleshell-server-protocol.h:
++	export SCANNER_TOOL=${WID}/bin/wayland-scanner && \
++	make -C simpleshell/protocol
++
++simpleshell/protocol/simpleshell-protocol.c:
++	export SCANNER_TOOL=${WID}/bin/wayland-scanner && \
++	make -C simpleshell/protocol
++
++westeros-simpleshell:
++	$(call setenv) && \
++	cd simpleshell && \
++	aclocal -I cfg && \
++	libtoolize --automake && \
++	autoheader && \
++	automake --foreign --add-missing && \
++	rm -f configure && \
++	autoconf && \
++	./configure --prefix $(WID) && \
++	make && make install
++
++westeros-core:
++	$(call setenv) && \
++	aclocal -I cfg && \
++	libtoolize --automake && \
++	autoheader && \
++	automake --foreign --add-missing && \
++	rm -f configure && \
++	autoconf && \
++	./configure --prefix $(WID) --enable-${XDGOPT} --enable-rendergl --enable-app --enable-test && \
++	make && make install
+-- 
+2.1.4
+

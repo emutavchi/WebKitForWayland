@@ -15,6 +15,10 @@
       <dep package="gst-plugins-good"/>
       <dep package="gst-plugins-bad"/>
       <dep package="gst-libav"/>
+      <dep package="proto"/>
+      <dep package="macros"/>
+      <dep package="libxcb"/>
+      <dep package="westeros"/>
     </dependencies>
   </metamodule>
 
@@ -34,6 +38,11 @@
       href="http://gstreamer.freedesktop.org/src/"/>
   <repository type="tarball" name="xkbcommon.org"
       href="http://xkbcommon.org"/>
+
+  <repository type="git" name="anongit.freedesktop.org"
+      href="git://anongit.freedesktop.org"/>
+  <repository type="git" name="local-repo"
+      href="file:///projects/generic/Comcast"/>
 
   <autotools id="libffi" autogen-sh="configure">
     <branch module="libffi/libffi-3.0.10.tar.gz" version="3.0.10"
@@ -156,6 +165,42 @@
     <branch module="gst-libav/gst-libav-1.6.1.tar.xz" version="1.6.1"
             repo="gstreamer"
             hash="sha256:24d5e8e8b8c825af1a19aa80a27aba268ec383c8133fd4ef66e0e572ff6137a9"/>
+  </autotools>
+
+  <autotools id="proto">
+    <branch repo="anongit.freedesktop.org"
+            module="xcb/proto"
+            tag="2ba8cdb2ef7d12b9615329b50ff14d69e6fa4a37" />
+  </autotools>
+
+  <autotools id="macros">
+    <dependencies>
+      <dep package="proto"/>
+    </dependencies>
+    <branch repo="anongit.freedesktop.org"
+            module="xorg/util/macros"
+            tag="d7acec2d3a3abe79814ceb72e2c0d4d95ed31d37" />
+  </autotools>
+
+  <autotools id="libxcb">
+    <dependencies>
+      <dep package="proto"/>
+      <dep package="macros"/>
+    </dependencies>
+    <branch repo="anongit.freedesktop.org"
+            module="xcb/libxcb"
+            tag="095353ff1a4f611922dfc4c98b0c4bd55d9f6d4f" />
+  </autotools>
+
+  <autotools id="westeros" makeargs="-f Makefile.jhbuild"
+             skip-autogen="true" skip-install="true" >
+    <dependencies>
+      <dep package="proto"/>
+      <dep package="macros"/>
+      <dep package="libxcb"/>
+    </dependencies>
+    <branch repo="local-repo"
+            module="westeros_bare" />
   </autotools>
 
 </moduleset>
