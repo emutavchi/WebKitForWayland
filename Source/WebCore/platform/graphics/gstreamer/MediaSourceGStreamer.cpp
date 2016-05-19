@@ -106,7 +106,7 @@ void MediaSourceGStreamer::markEndOfStream(EndOfStreamStatus status)
 
 void MediaSourceGStreamer::unmarkEndOfStream()
 {
-    notImplemented();
+    m_client->unmarkEndOfStream();
 }
 
 MediaPlayer::ReadyState MediaSourceGStreamer::readyState() const

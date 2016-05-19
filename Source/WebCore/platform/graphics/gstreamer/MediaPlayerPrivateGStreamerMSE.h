@@ -79,6 +79,7 @@ public:
     MediaSourcePrivateClient* mediaSourcePrivateClient() { return m_mediaSource.get(); }
 
     void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
+    void unmarkEndOfStream();
 
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     void dispatchDecryptionKey(GstBuffer*) override;
@@ -175,6 +176,7 @@ class MediaSourceClientGStreamerMSE: public RefCounted<MediaSourceClientGStreame
         MediaSourcePrivate::AddStatus addSourceBuffer(RefPtr<SourceBufferPrivateGStreamer>, const ContentType&);
         void durationChanged(const MediaTime&);
         void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
+        void unmarkEndOfStream();
 
         // From SourceBufferPrivateGStreamer
         void abort(PassRefPtr<SourceBufferPrivateGStreamer>);
