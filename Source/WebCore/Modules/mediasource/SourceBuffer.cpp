@@ -696,6 +696,13 @@ static PassRefPtr<TimeRanges> removeSamplesFromTrackBuffer(const DecodeOrderSamp
 
         double startTime = sample->presentationTime().toDouble();
         double endTime = startTime + (sample->duration() + microsecond).toDouble();
+
+#if USE(GSTREAMER)
+        if (erasedRanges->length() > 0 && erasedRanges->ranges().maximumBufferedTime() < sample->presentationTime())
+            erasedRanges->add(erasedRanges->ranges().maximumBufferedTime().toDouble(),
+                              (sample->presentationTime() + microsecond).toDouble());
+#endif
+
         erasedRanges->add(startTime, endTime);
 
 #if !LOG_DISABLED
@@ -744,8 +751,15 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
             removePresentationEnd = trackBuffer.samples.presentationOrder().findSampleWithPresentationTime(removeDecodeEnd->second->presentationTime());
 
         PresentationOrderSampleMap::iterator removePresentationStart = trackBuffer.samples.presentationOrder().findSampleOnOrAfterPresentationTime(start);
-        if (removePresentationStart == removePresentationEnd)
+        if (removePresentationStart == removePresentationEnd) {
+#if USE(GSTREAMER)
+            MediaTime microsecond(1, 1000000);
+            RefPtr<TimeRanges> erasedRanges = TimeRanges::create(PlatformTimeRanges(start, end + microsecond));
+            erasedRanges->invert();
+            trackBuffer.m_buffered->intersectWith(*erasedRanges);
+#endif
             continue;
+        }
 
         // 3.3 Remove all media data, from this track buffer, that contain starting timestamps greater than or equal to
         // start and less than the remove end timestamp.
