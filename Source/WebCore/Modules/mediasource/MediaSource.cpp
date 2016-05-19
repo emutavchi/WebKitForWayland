@@ -242,11 +242,13 @@ void MediaSource::completeSeek()
     for (auto& sourceBuffer : *m_activeSourceBuffers)
         sourceBuffer->seekToTime(m_pendingSeekTime);
 
+    m_pendingSeekTime = MediaTime::invalidTime();
+
     // 4. Resume the seek algorithm at the "Await a stable state" step.
     m_private->seekCompleted();
 
-    m_pendingSeekTime = MediaTime::invalidTime();
-    monitorSourceBuffers();
+    if (m_pendingSeekTime.isInvalid())
+        monitorSourceBuffers();
 }
 
 void MediaSource::monitorSourceBuffers()
