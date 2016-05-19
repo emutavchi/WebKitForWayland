@@ -972,6 +972,12 @@ void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfSt
     m_eosPending = true;
 }
 
+void MediaPlayerPrivateGStreamerMSE::unmarkEndOfStream()
+{
+    LOG_MEDIA_MESSAGE("Unmarking end of stream");
+    m_eosPending = false;
+}
+
 class GStreamerMediaDescription : public MediaDescription {
 private:
     GstCaps* m_caps;
@@ -2408,6 +2414,13 @@ void MediaSourceClientGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStr
     ASSERT(WTF::isMainThread());
 
     m_playerPrivate->markEndOfStream(status);
+}
+
+void MediaSourceClientGStreamerMSE::unmarkEndOfStream()
+{
+    ASSERT(WTF::isMainThread());
+
+    m_playerPrivate->unmarkEndOfStream();
 }
 
 void MediaSourceClientGStreamerMSE::removedFromMediaSource(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate)
