@@ -2343,7 +2343,7 @@ float MediaPlayerPrivateGStreamerMSE::currentTime() const
 {
     float position = MediaPlayerPrivateGStreamer::currentTime();
 
-    if (m_eosPending && (paused() || (position >= duration()))) {
+    if (m_eosPending && position >= duration()) {
         if (m_networkState != MediaPlayer::Loaded) {
             m_networkState = MediaPlayer::Loaded;
             m_player->networkStateChanged();
