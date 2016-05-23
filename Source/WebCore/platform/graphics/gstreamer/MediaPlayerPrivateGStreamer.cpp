@@ -2211,10 +2211,12 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
 
 #if USE(WESTEROS_SINK) && USE(HOLE_PUNCH_GSTREAMER)
     GRefPtr<GstElementFactory> westerosfactory = adoptGRef(gst_element_factory_find("westerossink"));
-
-    m_videoSink = gst_element_factory_create(westerosfactory.get(), "WesterosVideoSink");
-    g_object_set(m_pipeline.get(), "video-sink", m_videoSink.get(), nullptr);
-    g_object_set(G_OBJECT(m_videoSink.get()), "zorder",0.0f, nullptr);
+    if (westerosfactory)
+        m_videoSink = gst_element_factory_create(westerosfactory.get(), "WesterosVideoSink");
+    if (m_videoSink) {
+        g_object_set(m_pipeline.get(), "video-sink", m_videoSink.get(), nullptr);
+        g_object_set(G_OBJECT(m_videoSink.get()), "zorder",0.0f, nullptr);
+    }
 #endif
 
 #if !USE(WESTEROS_SINK) && !USE(FUSION_SINK)

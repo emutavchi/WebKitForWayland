@@ -56,6 +56,7 @@
 #include <runtime/VM.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/NeverDestroyed.h>
+
 #if !LOG_DISABLED
 #include <wtf/text/StringBuilder.h>
 #endif
