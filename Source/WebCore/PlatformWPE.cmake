@@ -273,4 +273,20 @@ if (ENABLE_SUBTLE_CRYPTO)
     )
 endif ()
 
+if (USE_QT5WEBRTC)
+    list(APPEND WebCore_SOURCES
+        platform/mediastream/qt5webrtc/MediaPlayerPrivateQt5WebRTC.cpp
+        platform/mediastream/qt5webrtc/PeerConnectionBackendQt5WebRTC.cpp
+        platform/mediastream/qt5webrtc/RealtimeMediaSourceCenterQt5WebRTC.cpp
+        platform/mediastream/SDPProcessorScriptResource.cpp
+    )
 
+    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+        ${QT5WEBRTC_INCLUDE_DIRS}
+        platform/mediastream/qt5webrtc/
+    )
+
+    list(APPEND WebCore_LIBRARIES
+        ${QT5WEBRTC_LIBRARIES}
+    )
+endif ()

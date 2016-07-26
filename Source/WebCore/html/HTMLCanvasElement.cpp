@@ -560,6 +560,7 @@ SecurityOrigin* HTMLCanvasElement::securityOrigin() const
 
 bool HTMLCanvasElement::shouldAccelerate(const IntSize& size) const
 {
+    return false;
 #if USE(IOSURFACE_CANVAS_BACKING_STORE)
     UNUSED_PARAM(size);
     return document().settings() && document().settings()->canvasUsesAcceleratedDrawing();

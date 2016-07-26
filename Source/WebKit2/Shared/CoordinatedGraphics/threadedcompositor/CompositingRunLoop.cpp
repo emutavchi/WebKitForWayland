@@ -80,7 +80,7 @@ void CompositingRunLoop::updateCompleted()
         return;
     }
 
-    ASSERT_NOT_REACHED();
+    // ASSERT_NOT_REACHED();
 }
 
 void CompositingRunLoop::updateTimerFired()

@@ -54,6 +54,9 @@
 #include <wtf/MainThread.h>
 #include <wtf/text/Base64.h>
 
+#include "MediaStreamEvent.h"
+#include "EventNames.h"
+
 namespace WebCore {
 
 using namespace PeerConnection;
@@ -101,6 +104,20 @@ RTCPeerConnection::~RTCPeerConnection()
     stop();
 }
 
+void RTCPeerConnection::addRemoteStream(RefPtr<MediaStream>& stream)
+{
+    if (m_signalingState == SignalingState::Closed || !stream) {
+        return;
+    }
+    m_remoteStreams.append(stream);
+    for(auto& track : stream->getTracks()) {
+        addReceiver(RTCRtpReceiver::create(track.releaseNonNull()));
+    }
+    scriptExecutionContext()->postTask([=](ScriptExecutionContext&) {
+        fireEvent(MediaStreamEvent::create(eventNames().addstreamEvent, false, false, stream));
+    });
+}
+
 RefPtr<RTCRtpSender> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>&& track, Vector<MediaStream*> streams, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingState::Closed) {
@@ -125,6 +142,13 @@ RefPtr<RTCRtpSender> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>&& track, 
     Vector<String> mediaStreamIds;
     for (auto stream : streams)
         mediaStreamIds.append(stream->id());
+
+    // Legacy mode
+    for (auto stream : streams) {
+        RefPtr<MediaStream> streamPtr = stream;
+        if (!m_localStreams.contains(streamPtr))
+            m_localStreams.append(streamPtr);
+    }
 
     RefPtr<RTCRtpSender> sender = RTCRtpSender::create(WTFMove(track), WTFMove(mediaStreamIds), *this);
     m_senderSet.append(sender);

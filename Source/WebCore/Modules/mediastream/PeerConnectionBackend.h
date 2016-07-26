@@ -51,6 +51,7 @@ class RTCRtpSender;
 class RTCSessionDescription;
 class RTCStatsResponse;
 class ScriptExecutionContext;
+class MediaStream;
 
 namespace PeerConnection {
 typedef DOMPromise<RefPtr<RTCSessionDescription>, RefPtr<DOMError>> SessionDescriptionPromise;
@@ -76,6 +77,9 @@ public:
     virtual PeerConnectionStates::IceConnectionState internalIceConnectionState() const = 0;
 
     virtual ~PeerConnectionBackendClient() { }
+
+    // Legacy mode
+    virtual void addRemoteStream(RefPtr<MediaStream>&) {}
 };
 
 typedef std::unique_ptr<PeerConnectionBackend> (*CreatePeerConnectionBackend)(PeerConnectionBackendClient*);

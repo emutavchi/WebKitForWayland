@@ -40,6 +40,7 @@
 #include "EventTarget.h"
 // FIXME: Workaround for bindings bug http://webkit.org/b/150121
 #include "JSMediaStream.h"
+#include "MediaStream.h"
 #include "PeerConnectionBackend.h"
 #include "RTCRtpReceiver.h"
 #include "RTCRtpSender.h"
@@ -106,6 +107,10 @@ public:
     using RefCounted<RTCPeerConnection>::ref;
     using RefCounted<RTCPeerConnection>::deref;
 
+    // Deprecated or removed from spec
+    Vector<RefPtr<MediaStream>> getRemoteStreams() const {return m_remoteStreams; }
+    Vector<RefPtr<MediaStream>> getLocalStreams() const {return m_localStreams; }
+    void addRemoteStream(RefPtr<MediaStream>&) override;
 private:
     RTCPeerConnection(ScriptExecutionContext&, RefPtr<RTCConfiguration>&&, ExceptionCode&);
 
@@ -146,6 +151,10 @@ private:
     std::unique_ptr<PeerConnectionBackend> m_backend;
 
     RefPtr<RTCConfiguration> m_configuration;
+
+    // Deprecated or removed from spec
+    Vector<RefPtr<MediaStream>> m_remoteStreams;
+    Vector<RefPtr<MediaStream>> m_localStreams;
 };
 
 } // namespace WebCore

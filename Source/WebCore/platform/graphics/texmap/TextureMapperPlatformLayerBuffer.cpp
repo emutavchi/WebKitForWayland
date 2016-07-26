@@ -58,12 +58,13 @@ void TextureMapperPlatformLayerBuffer::paintToTextureMapper(TextureMapper& textu
         return;
     }
 
-    ASSERT(m_textureID);
     TextureMapperGL& texmapGL = static_cast<TextureMapperGL&>(textureMapper);
     if (m_extraFlags & TextureMapperGL::ShouldOverwriteRect)
         texmapGL.drawSolidColor(targetRect, modelViewMatrix, Color(0, 0, 0, 0), false);
-    else
+    else {
+        ASSERT(m_textureID);
         texmapGL.drawTexture(m_textureID, m_extraFlags, m_size, targetRect, modelViewMatrix, opacity);
+    }
 }
 
 } // namespace WebCore
