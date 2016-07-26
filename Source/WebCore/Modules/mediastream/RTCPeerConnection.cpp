@@ -50,9 +50,14 @@
 #include "RTCIceCandidateEvent.h"
 #include "RTCOfferAnswerOptions.h"
 #include "RTCSessionDescription.h"
+#include "RTCDataChannelHandler.h"
+#include "RTCDataChannelEvent.h"
 #include "RTCTrackEvent.h"
 #include <wtf/MainThread.h>
 #include <wtf/text/Base64.h>
+
+#include "MediaStreamEvent.h"
+#include "EventNames.h"
 
 namespace WebCore {
 
@@ -101,6 +106,21 @@ RTCPeerConnection::~RTCPeerConnection()
     stop();
 }
 
+void RTCPeerConnection::addRemoteStream(RefPtr<MediaStream>&& stream)
+{
+    if (!stream)
+        return;
+    if (m_signalingState == SignalingState::Closed)
+        return;
+    m_remoteStreams.append(stream);
+    for(auto& track : stream->getTracks()) {
+        addReceiver(RTCRtpReceiver::create(track.releaseNonNull()));
+    }
+    scriptExecutionContext()->postTask([=](ScriptExecutionContext&) {
+        fireEvent(MediaStreamEvent::create(eventNames().addstreamEvent, false, false, stream));
+    });
+}
+
 RefPtr<RTCRtpSender> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>&& track, Vector<MediaStream*> streams, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingState::Closed) {
@@ -125,6 +145,13 @@ RefPtr<RTCRtpSender> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>&& track, 
     Vector<String> mediaStreamIds;
     for (auto stream : streams)
         mediaStreamIds.append(stream->id());
+
+    // Legacy mode
+    for (auto stream : streams) {
+        RefPtr<MediaStream> streamPtr = stream;
+        if (!m_localStreams.contains(streamPtr))
+            m_localStreams.append(streamPtr);
+    }
 
     RefPtr<RTCRtpSender> sender = RTCRtpSender::create(WTFMove(track), WTFMove(mediaStreamIds), *this);
     m_senderSet.append(sender);
@@ -333,14 +360,34 @@ void RTCPeerConnection::privateGetStats(MediaStreamTrack* selector, PeerConnecti
     m_backend->getStats(selector, WTFMove(promise));
 }
 
-RefPtr<RTCDataChannel> RTCPeerConnection::createDataChannel(String, const Dictionary&, ExceptionCode& ec)
+RefPtr<RTCDataChannel> RTCPeerConnection::createDataChannel(String label, const Dictionary& options, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingState::Closed) {
         ec = INVALID_STATE_ERR;
         return nullptr;
     }
 
-    return nullptr;
+    std::unique_ptr<RTCDataChannelHandler> handler = m_backend->createDataChannel(label, options);
+    if (!handler)
+        return nullptr;
+
+    RefPtr<RTCDataChannel> channel = RTCDataChannel::create(scriptExecutionContext(), WTFMove(handler));
+    if (!channel)
+        return nullptr;
+
+    m_dataChannels.append(channel);
+    return channel.release();
+}
+
+void RTCPeerConnection::addRemoteDataChannel(std::unique_ptr<RTCDataChannelHandler>&& handler)
+{
+    RefPtr<RTCDataChannel> channel = RTCDataChannel::create(scriptExecutionContext(), WTFMove(handler));
+    if (!channel)
+        return;
+    m_dataChannels.append(channel);
+    scriptExecutionContext()->postTask([=](ScriptExecutionContext&) {
+        fireEvent(RTCDataChannelEvent::create(eventNames().datachannelEvent, false, false, channel));
+    });
 }
 
 void RTCPeerConnection::close()
@@ -376,6 +423,13 @@ bool RTCPeerConnection::canSuspendForDocumentSuspension() const
 void RTCPeerConnection::addReceiver(RTCRtpReceiver& receiver)
 {
     m_receiverSet.append(&receiver);
+    RefPtr<RTCRtpReceiver> receiverPtr(&receiver);
+    RefPtr<MediaStreamTrack> trackPtr(&receiver.track());
+    scriptExecutionContext()->postTask([=](ScriptExecutionContext&) {
+        Vector<RefPtr<MediaStream>> streams = m_remoteStreams;
+        fireEvent(RTCTrackEvent::create(eventNames().trackEvent, false, false,
+                                        receiverPtr.copyRef(), WTFMove(streams), trackPtr.copyRef()));
+    });
 }
 
 void RTCPeerConnection::setSignalingState(SignalingState newState)

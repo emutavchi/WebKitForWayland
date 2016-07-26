@@ -97,6 +97,15 @@ function getStats()
     var peerConnection = this;
     var selector = null;
 
+    if (arguments.length == 2) {
+        // Legacy qtwebkit mode
+        selector = arguments[1];
+        if (selector != null && !(selector instanceof @MediaStreamTrack))
+            throw new @TypeError("Argument 2 ('selector') to RTCPeerConnection.getStats must be an instance of MediaStreamTrack");
+        var successCallback = @extractCallbackArg(arguments, 0, "successCallback", "getStats");
+        return peerConnection.@privateGetStats(selector).then(successCallback, null);
+    }
+
     if (arguments.length) {
         selector = arguments[0];
         if (selector != null && !(selector instanceof @MediaStreamTrack))
@@ -116,4 +125,15 @@ function getStats()
     var errorCallback = @extractCallbackArg(arguments, 2, "errorCallback", "getStats");
 
     peerConnection.@privateGetStats(selector).then(successCallback, errorCallback);
+}
+
+function addStream()
+{
+    "use strict";
+    var peerConnection = this;
+    if (arguments.length < 1)
+        throw new @TypeError("Not enough arguments");
+    var stream = arguments[0];
+    var videoTrack = stream.getVideoTracks()[0];
+    peerConnection.addTrack(videoTrack, stream);
 }

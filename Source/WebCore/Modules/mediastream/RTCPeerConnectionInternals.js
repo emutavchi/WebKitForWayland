@@ -120,7 +120,7 @@ function extractCallbackArg(args, index, name, parentFunctionName)
     "use strict";
 
     var callback = args[index];
-    if (typeof callback !== "function")
+    if (callback && typeof callback !== "function")
         throw new @TypeError("Argument " + (index + 1) + " ('" + name + "') to RTCPeerConnection." + parentFunctionName + " must be a Function");
 
     return callback;

@@ -76,6 +76,8 @@ public:
     void markAsNeedingNegotiation() override;
     void clearNegotiationNeededState() override { notImplemented(); };
 
+    std::unique_ptr<RTCDataChannelHandler> createDataChannel(const String&, const Dictionary&) override;
+
 private:
     void runTask(std::function<void()>);
     void startRunningTasks();

@@ -35,6 +35,7 @@
 
 #include "JSDOMPromise.h"
 #include "PeerConnectionStates.h"
+#include "Dictionary.h"
 
 namespace WebCore {
 
@@ -51,6 +52,8 @@ class RTCRtpSender;
 class RTCSessionDescription;
 class RTCStatsResponse;
 class ScriptExecutionContext;
+class MediaStream;
+class RTCDataChannelHandler;
 
 namespace PeerConnection {
 typedef DOMPromise<RefPtr<RTCSessionDescription>, RefPtr<DOMError>> SessionDescriptionPromise;
@@ -76,6 +79,10 @@ public:
     virtual PeerConnectionStates::IceConnectionState internalIceConnectionState() const = 0;
 
     virtual ~PeerConnectionBackendClient() { }
+
+    // Legacy mode
+    virtual void addRemoteStream(RefPtr<MediaStream>&&) = 0;
+    virtual void addRemoteDataChannel(std::unique_ptr<RTCDataChannelHandler>&&) = 0;
 };
 
 typedef std::unique_ptr<PeerConnectionBackend> (*CreatePeerConnectionBackend)(PeerConnectionBackendClient*);
@@ -110,6 +117,8 @@ public:
     virtual bool isNegotiationNeeded() const = 0;
     virtual void markAsNeedingNegotiation() = 0;
     virtual void clearNegotiationNeededState() = 0;
+
+    virtual std::unique_ptr<RTCDataChannelHandler> createDataChannel(const String&, const Dictionary&) = 0;
 };
 
 } // namespace WebCore

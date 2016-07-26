@@ -111,4 +111,10 @@
     attribute EventHandler oniceconnectionstatechange;
     attribute EventHandler onicegatheringstatechange;
     attribute EventHandler ondatachannel;
+
+    // Deprecated or removed from spec
+    [JSBuiltin] void addStream(MediaStream stream);
+    sequence<MediaStream> getLocalStreams();
+    sequence<MediaStream> getRemoteStreams();
+    attribute EventHandler onaddstream;
 };

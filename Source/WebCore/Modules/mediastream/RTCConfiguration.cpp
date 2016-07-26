@@ -68,18 +68,28 @@ static RefPtr<RTCIceServer> parseIceServer(const Dictionary& iceServer, Exceptio
     // then checking for a comma in the string assures that a string was a sequence and then we convert
     // it to a sequence safely.
     if (urlString.isEmpty()) {
-        ec = INVALID_ACCESS_ERR;
-        return nullptr;
+        // Legacy mode
+        iceServer.get("url", urlString);
+        if (urlString.isEmpty()) {
+            ec = INVALID_ACCESS_ERR;
+            return nullptr;
+        }
     }
 
-    if (urlString.find(',') != notFound && iceServer.get("urls", urlsList) && urlsList.size()) {
-        for (auto iter = urlsList.begin(); iter != urlsList.end(); ++iter) {
-            if (!validateIceServerURL(*iter)) {
-                ec = INVALID_ACCESS_ERR;
-                return nullptr;
+    bool tryString = true;
+    if (urlString.find(',') != notFound ) {
+        if ((iceServer.get("urls", urlsList) && urlsList.size()) || (iceServer.get("url", urlsList) && urlsList.size())) {
+            tryString = false;
+            for (auto iter = urlsList.begin(); iter != urlsList.end(); ++iter) {
+                if (!validateIceServerURL(*iter)) {
+                    ec = INVALID_ACCESS_ERR;
+                    return nullptr;
+                }
             }
         }
-    } else {
+    }
+
+    if (tryString) {
         if (!validateIceServerURL(urlString)) {
             ec = INVALID_ACCESS_ERR;
             return nullptr;
@@ -93,10 +103,10 @@ static RefPtr<RTCIceServer> parseIceServer(const Dictionary& iceServer, Exceptio
 
 RefPtr<RTCConfiguration> RTCConfiguration::create(const Dictionary& configuration, ExceptionCode& ec)
 {
-    if (configuration.isUndefinedOrNull())
-        return nullptr;
-
     RefPtr<RTCConfiguration> rtcConfiguration = adoptRef(new RTCConfiguration());
+    if (configuration.isUndefinedOrNull())
+        return rtcConfiguration;
+
     rtcConfiguration->initialize(configuration, ec);
     if (ec)
         return nullptr;

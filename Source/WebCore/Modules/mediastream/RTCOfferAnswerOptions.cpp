@@ -96,6 +96,16 @@ bool RTCOfferOptions::initialize(const Dictionary& options)
     if (options.get("iceRestart", iceRestart))
         m_iceRestart = iceRestart;
 
+    // Legacy mode
+    Dictionary mandatoryOptions;
+    if (options.get("mandatory", mandatoryOptions)) {
+        bool boolValue;
+        if (mandatoryOptions.get("OfferToReceiveAudio", boolValue) && boolValue)
+            m_offerToReceiveAudio = 1;
+        if (mandatoryOptions.get("OfferToReceiveVideo", boolValue) && boolValue)
+            m_offerToReceiveVideo = 1;
+    }
+
     return RTCOfferAnswerOptions::initialize(options);
 }
 

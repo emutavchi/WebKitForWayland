@@ -7,9 +7,59 @@
 #include <WebKit/WKString.h>
 #include <WebKit/WKURL.h>
 #include <WebKit/WKView.h>
+#include <WebKit/WKPreferencesRef.h>
+#include <WebKit/WKPreferencesRefPrivate.h>
 #include <glib.h>
+#include <WebKit/WKUserMediaPermissionRequest.h>
+#include <WebKit/WKUserMediaPermissionCheck.h>
+#include <WebKit/WKArray.h>
+#include <string>
 
 static WKViewRef createView(WKPageConfigurationRef);
+
+std::string toStdString(WKStringRef string)
+{
+    size_t size = WKStringGetMaximumUTF8CStringSize(string);
+    auto buffer = std::make_unique<char[]>(size);
+    size_t len = WKStringGetUTF8CString(string, buffer.get(), size);
+
+    return std::string(buffer.get(), len - 1);
+}
+
+void decidePolicyForUserMediaPermissionRequestCallBack(WKPageRef, WKFrameRef, WKSecurityOriginRef, WKSecurityOriginRef, WKUserMediaPermissionRequestRef permissionRequest, const void* /* clientInfo */)
+{
+    WKRetainPtr<WKArrayRef> audioDeviceUIDs = WKUserMediaPermissionRequestAudioDeviceUIDs(permissionRequest);
+    WKRetainPtr<WKArrayRef> videoDeviceUIDs = WKUserMediaPermissionRequestVideoDeviceUIDs(permissionRequest);
+
+    if (WKArrayGetSize(videoDeviceUIDs.get()) || WKArrayGetSize(audioDeviceUIDs.get())) {
+        WKRetainPtr<WKStringRef> videoDeviceUID;
+        if (WKArrayGetSize(videoDeviceUIDs.get()))
+            videoDeviceUID = reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(videoDeviceUIDs.get(), 0));
+        else
+            videoDeviceUID = WKStringCreateWithUTF8CString("");
+
+        WKRetainPtr<WKStringRef> audioDeviceUID;
+        if (WKArrayGetSize(audioDeviceUIDs.get()))
+            audioDeviceUID = reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(audioDeviceUIDs.get(), 0));
+        else
+            audioDeviceUID = WKStringCreateWithUTF8CString("");
+
+        printf("Accept: audio='%s' video='%s'\n", toStdString(audioDeviceUID.get()).c_str(), toStdString(videoDeviceUID.get()).c_str());
+
+        WKUserMediaPermissionRequestAllow(permissionRequest, audioDeviceUID.get(), videoDeviceUID.get());
+    }
+}
+
+void checkUserMediaPermissionForOrigin(WKPageRef page, WKFrameRef frame,
+                                       WKSecurityOriginRef userMediaDocumentOrigin,
+                                       WKSecurityOriginRef topLevelDocumentOrigin,
+                                       WKUserMediaPermissionCheckRef devicesRequest, const void *)
+{
+    WKUserMediaPermissionCheckSetUserMediaAccessInfo(
+        devicesRequest,
+        WKStringCreateWithUTF8CString("test-test"),
+        true);
+}
 
 static WKPageUIClientV6 createPageUIClient()
 {
@@ -66,7 +116,7 @@ static WKPageUIClientV6 createPageUIClient()
         nullptr, // didRecognizeLongMousePress
         nullptr, // didCancelTrackingPotentialLongMousePress
         nullptr, // isPlayingAudioDidChange
-        nullptr, // decidePolicyForUserMediaPermissionRequest
+        decidePolicyForUserMediaPermissionRequestCallBack, // decidePolicyForUserMediaPermissionRequest
         nullptr, // didClickAutoFillButton
         nullptr, // runJavaScriptAlert
         nullptr, // runJavaScriptConfirm
@@ -79,6 +129,10 @@ static WKPageUIClientV6 createPageUIClient()
             WKRetain(page);
             return page;
         },
+        0, // runJavaScriptAlert
+        0, // runJavaScriptConfirm
+        0, // runJavaScriptPrompt
+        checkUserMediaPermissionForOrigin,
     };
     return pageUIClient;
 }
@@ -129,6 +183,9 @@ static WKViewRef createView(WKPageConfigurationRef pageConfiguration)
     auto pageNavigationClient = createPageNavigationClient();
     WKPageSetPageNavigationClient(page, &pageNavigationClient.base);
 
+    const char* userAgent = getenv("USER_AGENT");
+    if (userAgent) WKPageSetCustomUserAgent(page, WKStringCreateWithUTF8CString(userAgent));
+
     return view;
 }
 
@@ -143,6 +200,13 @@ int main(int argc, char* argv[])
     WKPageConfigurationSetContext(pageConfiguration.get(), context.get());
     WKPageConfigurationSetPageGroup(pageConfiguration.get(), pageGroup.get());
 
+    auto preferences = adoptWK(WKPreferencesCreate());
+    WKPageGroupSetPreferences(pageGroup.get(), preferences.get());
+    WKPageConfigurationSetPreferences(pageConfiguration.get(), preferences.get());
+    WKPreferencesSetAllowRunningOfInsecureContent(preferences.get(), true);
+    WKPreferencesSetAllowDisplayOfInsecureContent(preferences.get(), true);
+    WKPreferencesSetLogsPageMessagesToSystemConsoleEnabled(preferences.get(), true);
+
     auto view = adoptWK(createView(pageConfiguration.get()));
 
     const char* url = "http://www.webkit.org/blog-files/3d-transforms/poster-circle.html";
@@ -151,6 +215,9 @@ int main(int argc, char* argv[])
 
     auto shellURL = adoptWK(WKURLCreateWithUTF8CString(url));
     WKPageLoadURL(WKViewGetPage(view.get()), shellURL.get());
+
+    WKPreferencesSetTabToLinksEnabled(preferences.get(), true);
+    WKPreferencesSetSpatialNavigationEnabled(preferences.get(), true);
 
     g_main_loop_run(loop);
 

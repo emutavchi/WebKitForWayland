@@ -47,8 +47,9 @@ EncodedJSValue JSC_HOST_CALL constructJSRTCPeerConnection(ExecState* exec)
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
 
-    if (!rtcConfiguration.isObject())
-        return throwVMError(exec, createTypeError(exec, "RTCPeerConnection argument must be a valid Dictionary"));
+    // Support for null configuration
+    // if (!rtcConfiguration.isObject())
+    //     return throwVMError(exec, createTypeError(exec, "RTCPeerConnection argument must be a valid Dictionary"));
 
     DOMConstructorObject* jsConstructor = jsCast<DOMConstructorObject*>(exec->callee());
     ScriptExecutionContext* scriptExecutionContext = jsConstructor->scriptExecutionContext();

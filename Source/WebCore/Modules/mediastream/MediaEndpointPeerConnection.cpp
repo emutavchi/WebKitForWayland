@@ -41,6 +41,7 @@
 #include "RTCOfferAnswerOptions.h"
 #include "RTCRtpSender.h"
 #include "SDPProcessor.h"
+#include "RTCDataChannelHandler.h"
 #include <wtf/MainThread.h>
 #include <wtf/text/Base64.h>
 
@@ -48,12 +49,14 @@ namespace WebCore {
 
 using namespace PeerConnection;
 
+#if !USE(USE_QT5WEBRTC)
 static std::unique_ptr<PeerConnectionBackend> createMediaEndpointPeerConnection(PeerConnectionBackendClient* client)
 {
     return std::unique_ptr<PeerConnectionBackend>(new MediaEndpointPeerConnection(client));
 }
 
 CreatePeerConnectionBackend PeerConnectionBackend::create = createMediaEndpointPeerConnection;
+#endif
 
 class WrappedSessionDescriptionPromise : public RefCounted<WrappedSessionDescriptionPromise> {
 public:
@@ -316,6 +319,13 @@ void MediaEndpointPeerConnection::gotRemoteSource(unsigned mdescIndex, RefPtr<Re
 
     notImplemented();
 }
+
+std::unique_ptr<RTCDataChannelHandler> MediaEndpointPeerConnection::createDataChannel(const String&, const Dictionary&)
+{
+    notImplemented();
+    return nullptr;
+}
+
 
 } // namespace WebCore
 

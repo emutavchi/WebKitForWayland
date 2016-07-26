@@ -152,6 +152,7 @@ private:
 #endif
 #if ENABLE(WEB_RTC)
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<RTCRtpReceiver>& result);
+    static void convertValue(JSC::ExecState*, JSC::JSValue, Vector<RefPtr<MediaStream>>& result);
 #endif
 #if ENABLE(FONT_LOAD_EVENTS)
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<CSSFontFaceRule>& result);
