@@ -394,7 +394,7 @@ void WKPageSetProxies(WKPageRef pageRef, WKArrayRef proxies)
     for (size_t i = 0; i < size; ++i)
     {
         WKTypeRef proxy = WKArrayGetItemAtIndex(proxies, i);
-        ASSERT(WKGetType(proxy) == WKProxyGetTypeID());
+        // ASSERT(WKGetType(proxy) == WKProxyGetTypeID());
         passProxies[i] = toImpl(static_cast<WKProxyRef>(proxy))->proxy();
     }
     toImpl(pageRef)->setProxies(passProxies);
