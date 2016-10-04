@@ -1,0 +1,5 @@
+find_package(PkgConfig)
+pkg_check_modules(WEBRTCORG webrtc)
+
+include(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(WEBRTCORG DEFAULT_MSG WEBRTCORG_INCLUDE_DIRS WEBRTCORG_LIBRARIES)

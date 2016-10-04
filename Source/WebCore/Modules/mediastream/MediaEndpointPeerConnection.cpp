@@ -49,7 +49,7 @@ namespace WebCore {
 
 using namespace PeerConnection;
 
-#if !USE(QT5WEBRTC)
+#if !USE(USE_WEBRTCORG)
 static std::unique_ptr<PeerConnectionBackend> createMediaEndpointPeerConnection(PeerConnectionBackendClient* client)
 {
     return std::unique_ptr<PeerConnectionBackend>(new MediaEndpointPeerConnection(client));

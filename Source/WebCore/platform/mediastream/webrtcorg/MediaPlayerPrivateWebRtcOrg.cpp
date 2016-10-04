@@ -1,6 +1,6 @@
 #include "config.h"
-#include "MediaPlayerPrivateQt5WebRTC.h"
-#include "RealtimeMediaSourceCenterQt5WebRTC.h"
+#include "MediaPlayerPrivateWebRtcOrg.h"
+#include "RealtimeMediaSourceCenterWebRtcOrg.h"
 
 #include <wtf/HashSet.h>
 #include <wtf/text/WTFString.h>
@@ -43,27 +43,27 @@ private:
 
 namespace WebCore {
 
-void MediaPlayerPrivateQt5WebRTC::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types)
+void MediaPlayerPrivateWebRtcOrg::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types)
 {
     static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> cache;
     types = cache;
 }
 
-MediaPlayer::SupportsType MediaPlayerPrivateQt5WebRTC::supportsType(const MediaEngineSupportParameters& parameters)
+MediaPlayer::SupportsType MediaPlayerPrivateWebRtcOrg::supportsType(const MediaEngineSupportParameters& parameters)
 {
     if (parameters.isMediaStream)
         return MediaPlayer::IsSupported;
     return MediaPlayer::IsNotSupported;
 }
 
-void MediaPlayerPrivateQt5WebRTC::registerMediaEngine(MediaEngineRegistrar registrar)
+void MediaPlayerPrivateWebRtcOrg::registerMediaEngine(MediaEngineRegistrar registrar)
 {
-    registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateQt5WebRTC>(player); },
+    registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateWebRtcOrg>(player); },
             getSupportedTypes, supportsType, 0, 0, 0,
               [](const String&, const String&) { return false; });
 }
 
-MediaPlayerPrivateQt5WebRTC::MediaPlayerPrivateQt5WebRTC(MediaPlayer* player)
+MediaPlayerPrivateWebRtcOrg::MediaPlayerPrivateWebRtcOrg(MediaPlayer* player)
     : m_player(player)
     , m_size(320, 240)
 {
@@ -75,26 +75,26 @@ MediaPlayerPrivateQt5WebRTC::MediaPlayerPrivateQt5WebRTC(MediaPlayer* player)
 #endif
 }
 
-MediaPlayerPrivateQt5WebRTC::~MediaPlayerPrivateQt5WebRTC()
+MediaPlayerPrivateWebRtcOrg::~MediaPlayerPrivateWebRtcOrg()
 {
     removeRenderer();
     m_player = 0;
 }
 
-void MediaPlayerPrivateQt5WebRTC::load(MediaStreamPrivate& stream)
+void MediaPlayerPrivateWebRtcOrg::load(MediaStreamPrivate& stream)
 {
     m_stream = &stream;
     m_player->readyStateChanged();
 }
 
-FloatSize MediaPlayerPrivateQt5WebRTC::naturalSize() const
+FloatSize MediaPlayerPrivateWebRtcOrg::naturalSize() const
 {
     if (!m_stream)
         return FloatSize();
     return m_stream->intrinsicSize();
 }
 
-void MediaPlayerPrivateQt5WebRTC::setSize(const IntSize& size)
+void MediaPlayerPrivateWebRtcOrg::setSize(const IntSize& size)
 {
     if (size == m_size)
         return;
@@ -102,7 +102,7 @@ void MediaPlayerPrivateQt5WebRTC::setSize(const IntSize& size)
     updateVideoRectangle();
 }
 
-void MediaPlayerPrivateQt5WebRTC::setPosition(const IntPoint& position)
+void MediaPlayerPrivateWebRtcOrg::setPosition(const IntPoint& position)
 {
     if (position == m_position)
         return;
@@ -110,7 +110,7 @@ void MediaPlayerPrivateQt5WebRTC::setPosition(const IntPoint& position)
     updateVideoRectangle();
 }
 
-void MediaPlayerPrivateQt5WebRTC::play()
+void MediaPlayerPrivateWebRtcOrg::play()
 {
     if (!m_stream || !m_stream->isProducingData())
         return;
@@ -118,13 +118,13 @@ void MediaPlayerPrivateQt5WebRTC::play()
     tryAttachRenderer();
 }
 
-void MediaPlayerPrivateQt5WebRTC::pause()
+void MediaPlayerPrivateWebRtcOrg::pause()
 {
     m_paused = true;
     removeRenderer();
 }
 
-void MediaPlayerPrivateQt5WebRTC::setVisible(bool visible)
+void MediaPlayerPrivateWebRtcOrg::setVisible(bool visible)
 {
     if (visible)
         tryAttachRenderer();
@@ -132,13 +132,13 @@ void MediaPlayerPrivateQt5WebRTC::setVisible(bool visible)
         removeRenderer();
 }
 
-void MediaPlayerPrivateQt5WebRTC::updateVideoRectangle()
+void MediaPlayerPrivateWebRtcOrg::updateVideoRectangle()
 {
     if (m_rtcRenderer)
         m_rtcRenderer->setVideoRectangle(m_position.x(), m_position.y(), m_size.width(), m_size.height());
 }
 
-void MediaPlayerPrivateQt5WebRTC::tryAttachRenderer()
+void MediaPlayerPrivateWebRtcOrg::tryAttachRenderer()
 {
     if (m_rtcRenderer)
         return;
@@ -153,14 +153,14 @@ void MediaPlayerPrivateQt5WebRTC::tryAttachRenderer()
     if (!videoTrack)
         return;
 
-    RealtimeVideoSourceQt5WebRTC& videoSource = static_cast<RealtimeVideoSourceQt5WebRTC&>(videoTrack->source());
+    RealtimeVideoSourceWebRtcOrg& videoSource = static_cast<RealtimeVideoSourceWebRtcOrg&>(videoTrack->source());
     m_rtcRenderer.reset(getRTCMediaSourceCenter().createVideoRenderer(videoSource.rtcStream(), this));
     videoSource.addObserver(this);
 
     updateVideoRectangle();
 }
 
-void MediaPlayerPrivateQt5WebRTC::removeRenderer()
+void MediaPlayerPrivateWebRtcOrg::removeRenderer()
 {
     if (!m_rtcRenderer)
         return;
@@ -169,12 +169,12 @@ void MediaPlayerPrivateQt5WebRTC::removeRenderer()
 
     MediaStreamTrackPrivate *videoTrack = m_stream ? m_stream->activeVideoTrack() : nullptr;
     if (videoTrack) {
-        RealtimeVideoSourceQt5WebRTC& videoSource = static_cast<RealtimeVideoSourceQt5WebRTC&>(videoTrack->source());
+        RealtimeVideoSourceWebRtcOrg& videoSource = static_cast<RealtimeVideoSourceWebRtcOrg&>(videoTrack->source());
         videoSource.removeObserver(this);
     }
 }
 
-void MediaPlayerPrivateQt5WebRTC::renderFrame(const unsigned char *data, int byteCount, int width, int height)
+void MediaPlayerPrivateWebRtcOrg::renderFrame(const unsigned char *data, int byteCount, int width, int height)
 {
 #if USE(COORDINATED_GRAPHICS_THREADED)
     cairo_format_t cairoFormat = CAIRO_FORMAT_ARGB32;
@@ -198,7 +198,7 @@ void MediaPlayerPrivateQt5WebRTC::renderFrame(const unsigned char *data, int byt
 #endif
 }
 
-void MediaPlayerPrivateQt5WebRTC::punchHole(int width, int height)
+void MediaPlayerPrivateWebRtcOrg::punchHole(int width, int height)
 {
 #if USE(COORDINATED_GRAPHICS_THREADED)
     LockHolder lock(m_drawMutex);
@@ -217,7 +217,7 @@ void MediaPlayerPrivateQt5WebRTC::punchHole(int width, int height)
 }
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-void MediaPlayerPrivateQt5WebRTC::pushTextureToCompositor(RefPtr<Image> frame)
+void MediaPlayerPrivateWebRtcOrg::pushTextureToCompositor(RefPtr<Image> frame)
 {
     LockHolder holder(m_platformLayerProxy->lock());
     if (!m_platformLayerProxy->isActive()) {
@@ -243,17 +243,17 @@ void MediaPlayerPrivateQt5WebRTC::pushTextureToCompositor(RefPtr<Image> frame)
 }
 #endif
 
-void MediaPlayerPrivateQt5WebRTC::sourceStopped()
+void MediaPlayerPrivateWebRtcOrg::sourceStopped()
 {
     removeRenderer();
 }
 
-void MediaPlayerPrivateQt5WebRTC::sourceMutedChanged()
+void MediaPlayerPrivateWebRtcOrg::sourceMutedChanged()
 {
     // Ignored
 }
 
-void MediaPlayerPrivateQt5WebRTC::sourceSettingsChanged()
+void MediaPlayerPrivateWebRtcOrg::sourceSettingsChanged()
 {
     // Ignored
 }

@@ -277,20 +277,19 @@ if (ENABLE_SUBTLE_CRYPTO)
     )
 endif ()
 
-if (USE_QT5WEBRTC)
+if (USE_WEBRTCORG)
     list(APPEND WebCore_SOURCES
-        platform/mediastream/qt5webrtc/MediaPlayerPrivateQt5WebRTC.cpp
-        platform/mediastream/qt5webrtc/PeerConnectionBackendQt5WebRTC.cpp
-        platform/mediastream/qt5webrtc/RealtimeMediaSourceCenterQt5WebRTC.cpp
+        platform/mediastream/webrtcorg/MediaPlayerPrivateWebRtcOrg.cpp
+        platform/mediastream/webrtcorg/PeerConnectionBackendWebRtcOrg.cpp
+        platform/mediastream/webrtcorg/RealtimeMediaSourceCenterWebRtcOrg.cpp
+        platform/mediastream/webrtcorg/wrtcint.cpp
         platform/mediastream/SDPProcessorScriptResource.cpp
     )
 
     list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
-        ${QT5WEBRTC_INCLUDE_DIRS}
-        platform/mediastream/qt5webrtc/
+        ${WEBRTCORG_INCLUDE_DIRS}
+        platform/mediastream/webrtcorg/
     )
 
-    list(APPEND WebCore_LIBRARIES
-        ${QT5WEBRTC_LIBRARIES}
-    )
+    add_definitions(${WEBRTCORG_CFLAGS_OTHER})
 endif ()

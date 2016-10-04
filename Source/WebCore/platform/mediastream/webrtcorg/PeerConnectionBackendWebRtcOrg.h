@@ -1,10 +1,10 @@
-#ifndef _PEERCONNECTIONBACKENDQT5WEBRTC_H_
-#define _PEERCONNECTIONBACKENDQT5WEBRTC_H_
+#ifndef _PEERCONNECTIONBACKENDWEBRTCORG_H_
+#define _PEERCONNECTIONBACKENDWEBRTCORG_H_
 
 #include "PeerConnectionBackend.h"
 #include "NotImplemented.h"
 
-#include "RealtimeMediaSourceCenterQt5WebRTC.h"
+#include "RealtimeMediaSourceCenterWebRtcOrg.h"
 #include "RTCDataChannelHandler.h"
 
 #include <wtf/HashMap.h>
@@ -14,9 +14,9 @@ namespace WebCore {
 
 class PeerConnectionBackendClient;
 
-class PeerConnectionBackendQt5WebRTC : public PeerConnectionBackend, public WRTCInt::RTCPeerConnectionClient {
+class PeerConnectionBackendWebRtcOrg : public PeerConnectionBackend, public WRTCInt::RTCPeerConnectionClient {
 public:
-    PeerConnectionBackendQt5WebRTC(PeerConnectionBackendClient*);
+    PeerConnectionBackendWebRtcOrg(PeerConnectionBackendClient*);
 
     virtual void createOffer(RTCOfferOptions&, PeerConnection::SessionDescriptionPromise&&) override;
     virtual void createAnswer(RTCAnswerOptions&, PeerConnection::SessionDescriptionPromise&&) override;
@@ -74,12 +74,12 @@ private:
     HashMap<int, Optional<PeerConnection::StatsPromise>> m_statsPromises;
 };
 
-class RTCDataChannelHandlerQt5WebRTC
+class RTCDataChannelHandlerWebRtcOrg
     : public RTCDataChannelHandler
     , public WRTCInt::RTCDataChannelClient
 {
 public:
-    RTCDataChannelHandlerQt5WebRTC(WRTCInt::RTCDataChannel* dataChannel);
+    RTCDataChannelHandlerWebRtcOrg(WRTCInt::RTCDataChannel* dataChannel);
 
     // RTCDataChannelHandler
     void setClient(RTCDataChannelHandlerClient*) override;
@@ -106,4 +106,4 @@ private:
 };
 
 }
-#endif  // _PEERCONNECTIONBACKENDQT5WEBRTC_H_
+#endif  // _PEERCONNECTIONBACKENDWEBRTCORG_H_

@@ -95,7 +95,7 @@
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-#include "MediaPlayerPrivateQt5WebRTC.h"
+#include "MediaPlayerPrivateWebRtcOrg.h"
 #endif
 
 namespace WebCore {
@@ -227,7 +227,7 @@ static void buildMediaEnginesVector()
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-    MediaPlayerPrivateQt5WebRTC::registerMediaEngine(addMediaEngine);
+    MediaPlayerPrivateWebRtcOrg::registerMediaEngine(addMediaEngine);
 #endif
 
 #if USE(HOLE_PUNCH_EXTERNAL)

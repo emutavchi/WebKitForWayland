@@ -1,5 +1,5 @@
 #include "config.h"
-#include "RealtimeMediaSourceCenterQt5WebRTC.h"
+#include "RealtimeMediaSourceCenterWebRtcOrg.h"
 
 #if ENABLE(MEDIA_STREAM)
 
@@ -20,7 +20,7 @@
 
 namespace WebCore {
 
-void enableQt5WebRTCPeerConnectionBackend();
+void enableWebRtcOrgPeerConnectionBackend();
 
 WRTCInt::RTCMediaSourceCenter& getRTCMediaSourceCenter()
 {
@@ -30,14 +30,14 @@ WRTCInt::RTCMediaSourceCenter& getRTCMediaSourceCenter()
     return *rtcMediaSourceCenter.get();
 }
 
-void RealtimeMediaSourceQt5WebRTC::startProducingData()
+void RealtimeMediaSourceWebRtcOrg::startProducingData()
 {
     if (m_stream) {
         m_isProducingData = true;
     }
 }
 
-void RealtimeMediaSourceQt5WebRTC::stopProducingData()
+void RealtimeMediaSourceWebRtcOrg::stopProducingData()
 {
     if (m_isProducingData) {
         m_isProducingData = false;
@@ -45,8 +45,8 @@ void RealtimeMediaSourceQt5WebRTC::stopProducingData()
     }
 }
 
-RealtimeVideoSourceQt5WebRTC::RealtimeVideoSourceQt5WebRTC(const String& id, const String& name)
-    : RealtimeMediaSourceQt5WebRTC(id, RealtimeMediaSource::Video, name)
+RealtimeVideoSourceWebRtcOrg::RealtimeVideoSourceWebRtcOrg(const String& id, const String& name)
+    : RealtimeMediaSourceWebRtcOrg(id, RealtimeMediaSource::Video, name)
 {
     // TODO: obtain settings from the device
     m_currentSettings.setWidth(320);
@@ -56,21 +56,21 @@ RealtimeVideoSourceQt5WebRTC::RealtimeVideoSourceQt5WebRTC(const String& id, con
 RealtimeMediaSourceCenter& RealtimeMediaSourceCenter::platformCenter()
 {
     ASSERT(isMainThread());
-    static NeverDestroyed<RealtimeMediaSourceCenterQt5WebRTC> center;
+    static NeverDestroyed<RealtimeMediaSourceCenterWebRtcOrg> center;
     return center;
 }
 
-RealtimeMediaSourceCenterQt5WebRTC::RealtimeMediaSourceCenterQt5WebRTC()
+RealtimeMediaSourceCenterWebRtcOrg::RealtimeMediaSourceCenterWebRtcOrg()
 {
     WRTCInt::init();
 
-    enableQt5WebRTCPeerConnectionBackend();
+    enableWebRtcOrgPeerConnectionBackend();
 
     m_supportedConstraints.setSupportsWidth(true);
     m_supportedConstraints.setSupportsHeight(true);
 }
 
-void RealtimeMediaSourceCenterQt5WebRTC::validateRequestConstraints(MediaStreamCreationClient* client, RefPtr<MediaConstraints>& audioConstraints, RefPtr<MediaConstraints>& videoConstraints)
+void RealtimeMediaSourceCenterWebRtcOrg::validateRequestConstraints(MediaStreamCreationClient* client, RefPtr<MediaConstraints>& audioConstraints, RefPtr<MediaConstraints>& videoConstraints)
 {
     ASSERT(client);
 
@@ -90,19 +90,19 @@ void RealtimeMediaSourceCenterQt5WebRTC::validateRequestConstraints(MediaStreamC
     client->constraintsValidated(audioSources, videoSources);
 }
 
-void RealtimeMediaSourceCenterQt5WebRTC::createMediaStream(PassRefPtr<MediaStreamCreationClient> /*prpQueryClient*/,
+void RealtimeMediaSourceCenterWebRtcOrg::createMediaStream(PassRefPtr<MediaStreamCreationClient> /*prpQueryClient*/,
                                                            PassRefPtr<MediaConstraints> /*audioConstraints*/,
                                                            PassRefPtr<MediaConstraints> /*videoConstraints*/)
 {
     notImplemented();
 }
 
-void RealtimeMediaSourceCenterQt5WebRTC::createMediaStream(MediaStreamCreationClient* client, const String& audioDeviceID, const String& videoDeviceID)
+void RealtimeMediaSourceCenterWebRtcOrg::createMediaStream(MediaStreamCreationClient* client, const String& audioDeviceID, const String& videoDeviceID)
 {
     ASSERT(client);
 
-    RefPtr<RealtimeMediaSourceQt5WebRTC> audioSource = findSource(audioDeviceID, RealtimeMediaSource::Audio);
-    RefPtr<RealtimeMediaSourceQt5WebRTC> videoSource = findSource(videoDeviceID, RealtimeMediaSource::Video);
+    RefPtr<RealtimeMediaSourceWebRtcOrg> audioSource = findSource(audioDeviceID, RealtimeMediaSource::Audio);
+    RefPtr<RealtimeMediaSourceWebRtcOrg> videoSource = findSource(videoDeviceID, RealtimeMediaSource::Video);
 
     m_sourceMap.clear();
 
@@ -135,11 +135,11 @@ void RealtimeMediaSourceCenterQt5WebRTC::createMediaStream(MediaStreamCreationCl
     client->didCreateStream(MediaStreamPrivate::create(id, audioSources, videoSources));
 }
 
-bool RealtimeMediaSourceCenterQt5WebRTC::getMediaStreamTrackSources(PassRefPtr<MediaStreamTrackSourcesRequestClient> prpClient)
+bool RealtimeMediaSourceCenterWebRtcOrg::getMediaStreamTrackSources(PassRefPtr<MediaStreamTrackSourcesRequestClient> prpClient)
 {
     RefPtr<MediaStreamTrackSourcesRequestClient> requestClient = prpClient;
 
-    RealtimeMediaSourceQt5WebRTCMap sourceMap = enumerateSources(true, true);
+    RealtimeMediaSourceWebRtcOrgMap sourceMap = enumerateSources(true, true);
     TrackSourceInfoVector sources;
     for (auto& source : sourceMap.values()) {
         RefPtr<TrackSourceInfo> info = TrackSourceInfo::create(
@@ -157,19 +157,19 @@ bool RealtimeMediaSourceCenterQt5WebRTC::getMediaStreamTrackSources(PassRefPtr<M
     return true;
 }
 
-RefPtr<TrackSourceInfo> RealtimeMediaSourceCenterQt5WebRTC::sourceWithUID(const String& /*UID*/, RealtimeMediaSource::Type, MediaConstraints* /*constraints*/)
+RefPtr<TrackSourceInfo> RealtimeMediaSourceCenterWebRtcOrg::sourceWithUID(const String& /*UID*/, RealtimeMediaSource::Type, MediaConstraints* /*constraints*/)
 {
     notImplemented();
     return nullptr;
 }
 
 
-RefPtr<RealtimeMediaSourceQt5WebRTC> RealtimeMediaSourceCenterQt5WebRTC::findSource(const String& id, RealtimeMediaSource::Type type)
+RefPtr<RealtimeMediaSourceWebRtcOrg> RealtimeMediaSourceCenterWebRtcOrg::findSource(const String& id, RealtimeMediaSource::Type type)
 {
     if (!id.isEmpty()) {
         auto sourceIterator = m_sourceMap.find(id);
         if (sourceIterator != m_sourceMap.end()) {
-            RefPtr<RealtimeMediaSourceQt5WebRTC> source = sourceIterator->value;
+            RefPtr<RealtimeMediaSourceWebRtcOrg> source = sourceIterator->value;
             if (source->type() == type)
                 return source.release();
         }
@@ -177,9 +177,9 @@ RefPtr<RealtimeMediaSourceQt5WebRTC> RealtimeMediaSourceCenterQt5WebRTC::findSou
     return nullptr;
 }
 
-RealtimeMediaSourceQt5WebRTCMap RealtimeMediaSourceCenterQt5WebRTC::enumerateSources(bool needsAudio, bool needsVideo)
+RealtimeMediaSourceWebRtcOrgMap RealtimeMediaSourceCenterWebRtcOrg::enumerateSources(bool needsAudio, bool needsVideo)
 {
-    RealtimeMediaSourceQt5WebRTCMap sourceMap;
+    RealtimeMediaSourceWebRtcOrgMap sourceMap;
 
     if (needsAudio) {
         std::vector<std::string> audioDevices;
@@ -188,7 +188,7 @@ RealtimeMediaSourceQt5WebRTCMap RealtimeMediaSourceCenterQt5WebRTC::enumerateSou
             String name(device.c_str());
             String id(createCanonicalUUIDString());
             printf("audio device id='%s', name='%s'\n", id.utf8().data(), name.utf8().data());
-            RefPtr<RealtimeMediaSourceQt5WebRTC> audioSource = adoptRef(new RealtimeAudioSourceQt5WebRTC(id, name));
+            RefPtr<RealtimeMediaSourceWebRtcOrg> audioSource = adoptRef(new RealtimeAudioSourceWebRtcOrg(id, name));
             sourceMap.add(id, audioSource.release());
         }
     }
@@ -200,7 +200,7 @@ RealtimeMediaSourceQt5WebRTCMap RealtimeMediaSourceCenterQt5WebRTC::enumerateSou
             String name(device.c_str());
             String id(createCanonicalUUIDString());
             printf("video device id='%s', name='%s'\n", id.utf8().data(), name.utf8().data());
-            RefPtr<RealtimeMediaSourceQt5WebRTC> videoSource = adoptRef(new RealtimeVideoSourceQt5WebRTC(id, name));
+            RefPtr<RealtimeMediaSourceWebRtcOrg> videoSource = adoptRef(new RealtimeVideoSourceWebRtcOrg(id, name));
             sourceMap.add(id, videoSource.release());
         }
     }

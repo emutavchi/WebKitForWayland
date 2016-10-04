@@ -1,11 +1,11 @@
-#ifndef MediaPlayerPrivateQt5WebRTC_h
-#define MediaPlayerPrivateQt5WebRTC_h
+#ifndef MediaPlayerPrivateWebRtcOrg_h
+#define MediaPlayerPrivateWebRtcOrg_h
 
 #include "MediaPlayerPrivate.h"
 #include "IntRect.h"
 #include "FloatRect.h"
 
-#include "RealtimeMediaSourceCenterQt5WebRTC.h"
+#include "RealtimeMediaSourceCenterWebRtcOrg.h"
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 #include "TextureMapperPlatformLayerProxy.h"
@@ -13,7 +13,7 @@
 
 namespace WebCore {
 
-class MediaPlayerPrivateQt5WebRTC : public MediaPlayerPrivateInterface
+class MediaPlayerPrivateWebRtcOrg : public MediaPlayerPrivateInterface
     , public WRTCInt::RTCVideoRendererClient
     , public RealtimeMediaSource::Observer
 #if USE(COORDINATED_GRAPHICS_THREADED)
@@ -21,8 +21,8 @@ class MediaPlayerPrivateQt5WebRTC : public MediaPlayerPrivateInterface
 #endif
 {
 public:
-    explicit MediaPlayerPrivateQt5WebRTC(MediaPlayer*);
-    ~MediaPlayerPrivateQt5WebRTC();
+    explicit MediaPlayerPrivateWebRtcOrg(MediaPlayer*);
+    ~MediaPlayerPrivateWebRtcOrg();
 
     static void registerMediaEngine(MediaEngineRegistrar);
 
@@ -62,7 +62,7 @@ public:
     bool supportsAcceleratedRendering() const override { return true; }
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    PlatformLayer* platformLayer() const override { return const_cast<MediaPlayerPrivateQt5WebRTC*>(this); }
+    PlatformLayer* platformLayer() const override { return const_cast<MediaPlayerPrivateWebRtcOrg*>(this); }
     RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy.copyRef(); }
     void swapBuffersIfNeeded() override { }
 #else

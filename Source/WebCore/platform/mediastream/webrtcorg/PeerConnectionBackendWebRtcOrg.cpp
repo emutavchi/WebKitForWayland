@@ -1,5 +1,5 @@
 #include "config.h"
-#include "PeerConnectionBackendQt5WebRTC.h"
+#include "PeerConnectionBackendWebRtcOrg.h"
 
 #include "ScriptExecutionContext.h"
 #include "UUID.h"
@@ -27,26 +27,26 @@ namespace WebCore {
 
 using namespace PeerConnection;
 
-static std::unique_ptr<PeerConnectionBackend> createPeerConnectionBackendQt5WebRTC(PeerConnectionBackendClient* client)
+static std::unique_ptr<PeerConnectionBackend> createPeerConnectionBackendWebRtcOrg(PeerConnectionBackendClient* client)
 {
     WRTCInt::init();
-    return std::unique_ptr<PeerConnectionBackend>(new PeerConnectionBackendQt5WebRTC(client));
+    return std::unique_ptr<PeerConnectionBackend>(new PeerConnectionBackendWebRtcOrg(client));
 }
 
-CreatePeerConnectionBackend PeerConnectionBackend::create = createPeerConnectionBackendQt5WebRTC;
+CreatePeerConnectionBackend PeerConnectionBackend::create = createPeerConnectionBackendWebRtcOrg;
 
-void enableQt5WebRTCPeerConnectionBackend()
+void enableWebRtcOrgPeerConnectionBackend()
 {
-    PeerConnectionBackend::create = createPeerConnectionBackendQt5WebRTC;
+    PeerConnectionBackend::create = createPeerConnectionBackendWebRtcOrg;
 }
 
-PeerConnectionBackendQt5WebRTC::PeerConnectionBackendQt5WebRTC(PeerConnectionBackendClient* client)
+PeerConnectionBackendWebRtcOrg::PeerConnectionBackendWebRtcOrg(PeerConnectionBackendClient* client)
     : m_client(client)
 {
     m_rtcConnection.reset(getRTCMediaSourceCenter().createPeerConnection(this));
 }
 
-void PeerConnectionBackendQt5WebRTC::createOffer(RTCOfferOptions& options, PeerConnection::SessionDescriptionPromise&& promise)
+void PeerConnectionBackendWebRtcOrg::createOffer(RTCOfferOptions& options, PeerConnection::SessionDescriptionPromise&& promise)
 {
     ASSERT(WRTCInt::InvalidRequestId == m_sessionDescriptionRequestId);
     ASSERT(!m_sessionDescriptionPromise);
@@ -66,7 +66,7 @@ void PeerConnectionBackendQt5WebRTC::createOffer(RTCOfferOptions& options, PeerC
     }
 }
 
-void PeerConnectionBackendQt5WebRTC::createAnswer(RTCAnswerOptions& options, PeerConnection::SessionDescriptionPromise&& promise)
+void PeerConnectionBackendWebRtcOrg::createAnswer(RTCAnswerOptions& options, PeerConnection::SessionDescriptionPromise&& promise)
 {
     ASSERT(WRTCInt::InvalidRequestId == m_sessionDescriptionRequestId);
     ASSERT(!m_sessionDescriptionPromise);
@@ -83,7 +83,7 @@ void PeerConnectionBackendQt5WebRTC::createAnswer(RTCAnswerOptions& options, Pee
     }
 }
 
-void PeerConnectionBackendQt5WebRTC::setLocalDescription(RTCSessionDescription& desc, PeerConnection::VoidPromise&& promise)
+void PeerConnectionBackendWebRtcOrg::setLocalDescription(RTCSessionDescription& desc, PeerConnection::VoidPromise&& promise)
 {
     ASSERT(WRTCInt::InvalidRequestId == m_voidRequestId);
     ASSERT(!m_voidPromise);
@@ -100,7 +100,7 @@ void PeerConnectionBackendQt5WebRTC::setLocalDescription(RTCSessionDescription& 
         promise.reject(DOMError::create("Failed to parse local description"));
     }
 }
-RefPtr<RTCSessionDescription> PeerConnectionBackendQt5WebRTC::localDescription() const
+RefPtr<RTCSessionDescription> PeerConnectionBackendWebRtcOrg::localDescription() const
 {
     // TODO: pendingLocalDescription/currentLocalDescription
     WRTCInt::RTCSessionDescription localDesc;
@@ -109,16 +109,16 @@ RefPtr<RTCSessionDescription> PeerConnectionBackendQt5WebRTC::localDescription()
     String sdp = localDesc.sdp.c_str();
     return RTCSessionDescription::create(type, sdp);
 }
-RefPtr<RTCSessionDescription> PeerConnectionBackendQt5WebRTC::currentLocalDescription() const
+RefPtr<RTCSessionDescription> PeerConnectionBackendWebRtcOrg::currentLocalDescription() const
 {
     return localDescription();
 }
-RefPtr<RTCSessionDescription> PeerConnectionBackendQt5WebRTC::pendingLocalDescription() const
+RefPtr<RTCSessionDescription> PeerConnectionBackendWebRtcOrg::pendingLocalDescription() const
 {
     return RefPtr<RTCSessionDescription>();
 }
 
-void PeerConnectionBackendQt5WebRTC::setRemoteDescription(RTCSessionDescription& desc, PeerConnection::VoidPromise&& promise)
+void PeerConnectionBackendWebRtcOrg::setRemoteDescription(RTCSessionDescription& desc, PeerConnection::VoidPromise&& promise)
 {
     ASSERT(WRTCInt::InvalidRequestId == m_voidRequestId);
     ASSERT(!m_voidPromise);
@@ -135,7 +135,7 @@ void PeerConnectionBackendQt5WebRTC::setRemoteDescription(RTCSessionDescription&
         promise.reject(DOMError::create("Failed to parse remote description"));
     }
 }
-RefPtr<RTCSessionDescription> PeerConnectionBackendQt5WebRTC::remoteDescription() const
+RefPtr<RTCSessionDescription> PeerConnectionBackendWebRtcOrg::remoteDescription() const
 {
     // TODO: pendingRemoteDescription/currentRemoteDescription
     WRTCInt::RTCSessionDescription remoteDesc;
@@ -144,16 +144,16 @@ RefPtr<RTCSessionDescription> PeerConnectionBackendQt5WebRTC::remoteDescription(
     String sdp = remoteDesc.sdp.c_str();
     return RTCSessionDescription::create(type, sdp);
 }
-RefPtr<RTCSessionDescription> PeerConnectionBackendQt5WebRTC::currentRemoteDescription() const
+RefPtr<RTCSessionDescription> PeerConnectionBackendWebRtcOrg::currentRemoteDescription() const
 {
     return remoteDescription();
 }
-RefPtr<RTCSessionDescription> PeerConnectionBackendQt5WebRTC::pendingRemoteDescription() const
+RefPtr<RTCSessionDescription> PeerConnectionBackendWebRtcOrg::pendingRemoteDescription() const
 {
     return RefPtr<RTCSessionDescription>();
 }
 
-void PeerConnectionBackendQt5WebRTC::setConfiguration(RTCConfiguration& config, const MediaConstraints& constraints)
+void PeerConnectionBackendWebRtcOrg::setConfiguration(RTCConfiguration& config, const MediaConstraints& constraints)
 {
     WRTCInt::RTCConfiguration wrtcConfig;
     for(auto& server : config.iceServers()) {
@@ -185,7 +185,7 @@ void PeerConnectionBackendQt5WebRTC::setConfiguration(RTCConfiguration& config, 
     m_rtcConnection->setConfiguration(wrtcConfig, wrtcConstraints);
 }
 
-void PeerConnectionBackendQt5WebRTC::addIceCandidate(RTCIceCandidate& candidate, PeerConnection::VoidPromise&& promise)
+void PeerConnectionBackendWebRtcOrg::addIceCandidate(RTCIceCandidate& candidate, PeerConnection::VoidPromise&& promise)
 {
     WRTCInt::RTCIceCandidate iceCandidate;
     iceCandidate.sdp = candidate.candidate().utf8().data();
@@ -199,7 +199,7 @@ void PeerConnectionBackendQt5WebRTC::addIceCandidate(RTCIceCandidate& candidate,
     }
 }
 
-void PeerConnectionBackendQt5WebRTC::getStats(MediaStreamTrack*, PeerConnection::StatsPromise&& promise)
+void PeerConnectionBackendWebRtcOrg::getStats(MediaStreamTrack*, PeerConnection::StatsPromise&& promise)
 {
     int id = m_rtcConnection->getStats();
     if (WRTCInt::InvalidRequestId != id) {
@@ -209,28 +209,28 @@ void PeerConnectionBackendQt5WebRTC::getStats(MediaStreamTrack*, PeerConnection:
     }
 }
 
-void PeerConnectionBackendQt5WebRTC::replaceTrack(RTCRtpSender&, MediaStreamTrack&, PeerConnection::VoidPromise&& promise)
+void PeerConnectionBackendWebRtcOrg::replaceTrack(RTCRtpSender&, MediaStreamTrack&, PeerConnection::VoidPromise&& promise)
 {
     notImplemented();
     promise.reject(DOMError::create("NotSupportedError"));
 }
 
-void PeerConnectionBackendQt5WebRTC::stop()
+void PeerConnectionBackendWebRtcOrg::stop()
 {
     m_rtcConnection->stop();
 }
 
-bool PeerConnectionBackendQt5WebRTC::isNegotiationNeeded() const
+bool PeerConnectionBackendWebRtcOrg::isNegotiationNeeded() const
 {
     return m_isNegotiationNeeded;
 }
 
-void PeerConnectionBackendQt5WebRTC::markAsNeedingNegotiation()
+void PeerConnectionBackendWebRtcOrg::markAsNeedingNegotiation()
 {
     Vector<RefPtr<RTCRtpSender>> senders = m_client->getSenders();
     for(auto &sender : senders) {
         RealtimeMediaSource& source = sender->track().source();
-        WRTCInt::RTCMediaStream* stream = static_cast<RealtimeMediaSourceQt5WebRTC&>(source).rtcStream();
+        WRTCInt::RTCMediaStream* stream = static_cast<RealtimeMediaSourceWebRtcOrg&>(source).rtcStream();
         if (stream) {
             m_rtcConnection->addStream(stream);
             break;
@@ -238,12 +238,12 @@ void PeerConnectionBackendQt5WebRTC::markAsNeedingNegotiation()
     }
 }
 
-void PeerConnectionBackendQt5WebRTC::clearNegotiationNeededState()
+void PeerConnectionBackendWebRtcOrg::clearNegotiationNeededState()
 {
     m_isNegotiationNeeded = false;
 }
 
-std::unique_ptr<RTCDataChannelHandler> PeerConnectionBackendQt5WebRTC::createDataChannel(const String& label, const Dictionary& options)
+std::unique_ptr<RTCDataChannelHandler> PeerConnectionBackendWebRtcOrg::createDataChannel(const String& label, const Dictionary& options)
 {
     WRTCInt::DataChannelInit initData;
     String maxRetransmitsStr;
@@ -265,13 +265,13 @@ std::unique_ptr<RTCDataChannelHandler> PeerConnectionBackendQt5WebRTC::createDat
     }
     WRTCInt::RTCDataChannel* channel = m_rtcConnection->createDataChannel(label.utf8().data(), initData);
     return channel
-        ? std::make_unique<RTCDataChannelHandlerQt5WebRTC>(channel)
+        ? std::make_unique<RTCDataChannelHandlerWebRtcOrg>(channel)
         : nullptr;
 }
 
 // ===========  WRTCInt::RTCPeerConnectionClient ==========
 
-void PeerConnectionBackendQt5WebRTC::requestSucceeded(int id, const WRTCInt::RTCSessionDescription& desc)
+void PeerConnectionBackendWebRtcOrg::requestSucceeded(int id, const WRTCInt::RTCSessionDescription& desc)
 {
     ASSERT(id == m_sessionDescriptionRequestId);
     ASSERT(m_sessionDescriptionPromise);
@@ -288,7 +288,7 @@ void PeerConnectionBackendQt5WebRTC::requestSucceeded(int id, const WRTCInt::RTC
     m_sessionDescriptionPromise = WTF::Nullopt;
 }
 
-void PeerConnectionBackendQt5WebRTC::requestSucceeded(int id, const std::vector<std::unique_ptr<WRTCInt::RTCStatsReport>>& reports)
+void PeerConnectionBackendWebRtcOrg::requestSucceeded(int id, const std::vector<std::unique_ptr<WRTCInt::RTCStatsReport>>& reports)
 {
     Optional<PeerConnection::StatsPromise> statsPromise = m_statsPromises.take(id);
     if (!statsPromise) {
@@ -312,7 +312,7 @@ void PeerConnectionBackendQt5WebRTC::requestSucceeded(int id, const std::vector<
     statsPromise->resolve(WTFMove(response));
 }
 
-void PeerConnectionBackendQt5WebRTC::requestSucceeded(int id)
+void PeerConnectionBackendWebRtcOrg::requestSucceeded(int id)
 {
     ASSERT(id == m_voidRequestId);
     ASSERT(m_voidPromise);
@@ -323,7 +323,7 @@ void PeerConnectionBackendQt5WebRTC::requestSucceeded(int id)
     m_voidPromise = WTF::Nullopt;
 }
 
-void PeerConnectionBackendQt5WebRTC::requestFailed(int id, const std::string& error)
+void PeerConnectionBackendWebRtcOrg::requestFailed(int id, const std::string& error)
 {
     if (id == m_voidRequestId) {
         ASSERT(m_voidPromise);
@@ -342,13 +342,13 @@ void PeerConnectionBackendQt5WebRTC::requestFailed(int id, const std::string& er
     }
 }
 
-void PeerConnectionBackendQt5WebRTC::negotiationNeeded()
+void PeerConnectionBackendWebRtcOrg::negotiationNeeded()
 {
     m_isNegotiationNeeded = true;
     m_client->scheduleNegotiationNeededEvent();
 }
 
-void PeerConnectionBackendQt5WebRTC::didAddRemoteStream(
+void PeerConnectionBackendWebRtcOrg::didAddRemoteStream(
     WRTCInt::RTCMediaStream *stream,
     const std::vector<std::string> &audioDevices,
     const std::vector<std::string> &videoDevices)
@@ -364,14 +364,14 @@ void PeerConnectionBackendQt5WebRTC::didAddRemoteStream(
     for (auto& device : audioDevices) {
         String name(device.c_str());
         String id(createCanonicalUUIDString());
-        RefPtr<RealtimeMediaSourceQt5WebRTC> audioSource = adoptRef(new RealtimeAudioSourceQt5WebRTC(id, name));
+        RefPtr<RealtimeMediaSourceWebRtcOrg> audioSource = adoptRef(new RealtimeAudioSourceWebRtcOrg(id, name));
         audioSource->setRTCStream(rtcStream);
         audioSources.append(audioSource.release());
     }
     for (auto& device : videoDevices) {
         String name(device.c_str());
         String id(createCanonicalUUIDString());
-        RefPtr<RealtimeMediaSourceQt5WebRTC> videoSource = adoptRef(new RealtimeVideoSourceQt5WebRTC(id, name));
+        RefPtr<RealtimeMediaSourceWebRtcOrg> videoSource = adoptRef(new RealtimeVideoSourceWebRtcOrg(id, name));
         videoSource->setRTCStream(rtcStream);
         videoSources.append(videoSource.release());
     }
@@ -382,7 +382,7 @@ void PeerConnectionBackendQt5WebRTC::didAddRemoteStream(
     m_client->addRemoteStream(WTFMove(mediaStream));
 }
 
-void PeerConnectionBackendQt5WebRTC::didGenerateIceCandidate(const WRTCInt::RTCIceCandidate& iceCandidate)
+void PeerConnectionBackendWebRtcOrg::didGenerateIceCandidate(const WRTCInt::RTCIceCandidate& iceCandidate)
 {
     ASSERT(m_client);
     String sdp = iceCandidate.sdp.c_str();
@@ -394,7 +394,7 @@ void PeerConnectionBackendQt5WebRTC::didGenerateIceCandidate(const WRTCInt::RTCI
     });
 }
 
-void PeerConnectionBackendQt5WebRTC::didChangeSignalingState(WRTCInt::SignalingState state)
+void PeerConnectionBackendWebRtcOrg::didChangeSignalingState(WRTCInt::SignalingState state)
 {
     ASSERT(m_client);
     PeerConnectionStates::SignalingState signalingState = PeerConnectionStates::SignalingState::Stable;
@@ -424,7 +424,7 @@ void PeerConnectionBackendQt5WebRTC::didChangeSignalingState(WRTCInt::SignalingS
     m_client->setSignalingState(signalingState);
 }
 
-void PeerConnectionBackendQt5WebRTC::didChangeIceGatheringState(WRTCInt::IceGatheringState state)
+void PeerConnectionBackendWebRtcOrg::didChangeIceGatheringState(WRTCInt::IceGatheringState state)
 {
     ASSERT(m_client);
     PeerConnectionStates::IceGatheringState iceGatheringState = PeerConnectionStates::IceGatheringState::New;
@@ -445,7 +445,7 @@ void PeerConnectionBackendQt5WebRTC::didChangeIceGatheringState(WRTCInt::IceGath
     m_client->updateIceGatheringState(iceGatheringState);
 }
 
-void PeerConnectionBackendQt5WebRTC::didChangeIceConnectionState(WRTCInt::IceConnectionState state)
+void PeerConnectionBackendWebRtcOrg::didChangeIceConnectionState(WRTCInt::IceConnectionState state)
 {
     ASSERT(m_client);
     PeerConnectionStates::IceConnectionState iceConnectionState = PeerConnectionStates::IceConnectionState::New;
@@ -478,19 +478,19 @@ void PeerConnectionBackendQt5WebRTC::didChangeIceConnectionState(WRTCInt::IceCon
     m_client->updateIceConnectionState(iceConnectionState);
 }
 
-void PeerConnectionBackendQt5WebRTC::didAddRemoteDataChannel(WRTCInt::RTCDataChannel* channel)
+void PeerConnectionBackendWebRtcOrg::didAddRemoteDataChannel(WRTCInt::RTCDataChannel* channel)
 {
-    std::unique_ptr<RTCDataChannelHandler> handler = std::make_unique<RTCDataChannelHandlerQt5WebRTC>(channel);
+    std::unique_ptr<RTCDataChannelHandler> handler = std::make_unique<RTCDataChannelHandlerWebRtcOrg>(channel);
     m_client->addRemoteDataChannel(WTFMove(handler));
 }
 
-RTCDataChannelHandlerQt5WebRTC::RTCDataChannelHandlerQt5WebRTC(WRTCInt::RTCDataChannel* dataChannel)
+RTCDataChannelHandlerWebRtcOrg::RTCDataChannelHandlerWebRtcOrg(WRTCInt::RTCDataChannel* dataChannel)
     : m_rtcDataChannel(dataChannel)
     , m_client(nullptr)
 {
 }
 
-void RTCDataChannelHandlerQt5WebRTC::setClient(RTCDataChannelHandlerClient* client)
+void RTCDataChannelHandlerWebRtcOrg::setClient(RTCDataChannelHandlerClient* client)
 {
     if (m_client == client)
         return;
@@ -501,62 +501,62 @@ void RTCDataChannelHandlerQt5WebRTC::setClient(RTCDataChannelHandlerClient* clie
         m_rtcDataChannel->setClient(this);
 }
 
-String RTCDataChannelHandlerQt5WebRTC::label()
+String RTCDataChannelHandlerWebRtcOrg::label()
 {
     return m_rtcDataChannel->label().c_str();
 }
 
-bool RTCDataChannelHandlerQt5WebRTC::ordered()
+bool RTCDataChannelHandlerWebRtcOrg::ordered()
 {
     return m_rtcDataChannel->ordered();
 }
 
-unsigned short RTCDataChannelHandlerQt5WebRTC::maxRetransmitTime()
+unsigned short RTCDataChannelHandlerWebRtcOrg::maxRetransmitTime()
 {
     return m_rtcDataChannel->maxRetransmitTime();
 }
 
-unsigned short RTCDataChannelHandlerQt5WebRTC::maxRetransmits()
+unsigned short RTCDataChannelHandlerWebRtcOrg::maxRetransmits()
 {
     return m_rtcDataChannel->maxRetransmits();
 }
 
-String RTCDataChannelHandlerQt5WebRTC::protocol()
+String RTCDataChannelHandlerWebRtcOrg::protocol()
 {
     return m_rtcDataChannel->protocol().c_str();
 }
 
-bool RTCDataChannelHandlerQt5WebRTC::negotiated()
+bool RTCDataChannelHandlerWebRtcOrg::negotiated()
 {
     return m_rtcDataChannel->negotiated();
 }
 
-unsigned short RTCDataChannelHandlerQt5WebRTC::id()
+unsigned short RTCDataChannelHandlerWebRtcOrg::id()
 {
     return m_rtcDataChannel->id();
 }
 
-unsigned long RTCDataChannelHandlerQt5WebRTC::bufferedAmount()
+unsigned long RTCDataChannelHandlerWebRtcOrg::bufferedAmount()
 {
     return m_rtcDataChannel->bufferedAmount();
 }
 
-bool RTCDataChannelHandlerQt5WebRTC::sendStringData(const String& str)
+bool RTCDataChannelHandlerWebRtcOrg::sendStringData(const String& str)
 {
     return m_rtcDataChannel->sendStringData(str.utf8().data());
 }
 
-bool RTCDataChannelHandlerQt5WebRTC::sendRawData(const char* data, size_t size)
+bool RTCDataChannelHandlerWebRtcOrg::sendRawData(const char* data, size_t size)
 {
     return m_rtcDataChannel->sendRawData(data, size);
 }
 
-void RTCDataChannelHandlerQt5WebRTC::close()
+void RTCDataChannelHandlerWebRtcOrg::close()
 {
     m_rtcDataChannel->close();
 }
 
-void RTCDataChannelHandlerQt5WebRTC::didChangeReadyState(WRTCInt::DataChannelState state)
+void RTCDataChannelHandlerWebRtcOrg::didChangeReadyState(WRTCInt::DataChannelState state)
 {
     RTCDataChannelHandlerClient::ReadyState readyState = RTCDataChannelHandlerClient::ReadyStateConnecting;
     switch(state) {
@@ -578,12 +578,12 @@ void RTCDataChannelHandlerQt5WebRTC::didChangeReadyState(WRTCInt::DataChannelSta
     m_client->didChangeReadyState(readyState);
 }
 
-void RTCDataChannelHandlerQt5WebRTC::didReceiveStringData(const std::string& str)
+void RTCDataChannelHandlerWebRtcOrg::didReceiveStringData(const std::string& str)
 {
     m_client->didReceiveStringData(str.c_str());
 }
 
-void RTCDataChannelHandlerQt5WebRTC::didReceiveRawData(const char* data, size_t sz)
+void RTCDataChannelHandlerWebRtcOrg::didReceiveRawData(const char* data, size_t sz)
 {
     m_client->didReceiveRawData(data, sz);
 }

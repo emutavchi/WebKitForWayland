@@ -1,5 +1,5 @@
-#ifndef _REALTIMEMEDIASOURCECENTERQT5WEBRTC_H_
-#define _REALTIMEMEDIASOURCECENTERQT5WEBRTC_H_
+#ifndef _REALTIMEMEDIASOURCECENTERWEBRTCORG_H_
+#define _REALTIMEMEDIASOURCECENTERWEBRTCORG_H_
 
 #if ENABLE(MEDIA_STREAM)
 
@@ -18,12 +18,12 @@ namespace WebCore {
 
 WRTCInt::RTCMediaSourceCenter& getRTCMediaSourceCenter();
 
-class RealtimeMediaSourceQt5WebRTC : public RealtimeMediaSource
+class RealtimeMediaSourceWebRtcOrg : public RealtimeMediaSource
 {
 public:
-    RealtimeMediaSourceQt5WebRTC(const String& id, RealtimeMediaSource::Type type, const String& name)
+    RealtimeMediaSourceWebRtcOrg(const String& id, RealtimeMediaSource::Type type, const String& name)
         : RealtimeMediaSource(id, type, name) { }
-    virtual ~RealtimeMediaSourceQt5WebRTC() { }
+    virtual ~RealtimeMediaSourceWebRtcOrg() { }
 
     virtual RefPtr<RealtimeMediaSourceCapabilities> capabilities() override { return m_capabilities; }
     virtual const RealtimeMediaSourceSettings& settings() override { return m_currentSettings; }
@@ -42,27 +42,27 @@ protected:
     std::shared_ptr<WRTCInt::RTCMediaStream> m_stream;
 };
 
-class RealtimeAudioSourceQt5WebRTC final : public RealtimeMediaSourceQt5WebRTC
+class RealtimeAudioSourceWebRtcOrg final : public RealtimeMediaSourceWebRtcOrg
 {
   public:
-    RealtimeAudioSourceQt5WebRTC(const String& id, const String& name)
-        : RealtimeMediaSourceQt5WebRTC(id, RealtimeMediaSource::Audio, name)
+    RealtimeAudioSourceWebRtcOrg(const String& id, const String& name)
+        : RealtimeMediaSourceWebRtcOrg(id, RealtimeMediaSource::Audio, name)
     { }
 };
 
-class RealtimeVideoSourceQt5WebRTC final : public RealtimeMediaSourceQt5WebRTC
+class RealtimeVideoSourceWebRtcOrg final : public RealtimeMediaSourceWebRtcOrg
 {
   public:
-    RealtimeVideoSourceQt5WebRTC(const String& id, const String& name);
+    RealtimeVideoSourceWebRtcOrg(const String& id, const String& name);
 };
 
-typedef HashMap<String, RefPtr<RealtimeMediaSourceQt5WebRTC>> RealtimeMediaSourceQt5WebRTCMap;
+typedef HashMap<String, RefPtr<RealtimeMediaSourceWebRtcOrg>> RealtimeMediaSourceWebRtcOrgMap;
 
-class RealtimeMediaSourceCenterQt5WebRTC final : public RealtimeMediaSourceCenter {
+class RealtimeMediaSourceCenterWebRtcOrg final : public RealtimeMediaSourceCenter {
 private:
-    friend NeverDestroyed<RealtimeMediaSourceCenterQt5WebRTC>;
+    friend NeverDestroyed<RealtimeMediaSourceCenterWebRtcOrg>;
 
-    RealtimeMediaSourceCenterQt5WebRTC();
+    RealtimeMediaSourceCenterWebRtcOrg();
 
     void validateRequestConstraints(MediaStreamCreationClient*,
                                     RefPtr<MediaConstraints>& audioConstraints,
@@ -80,15 +80,14 @@ private:
 
     RefPtr<TrackSourceInfo> sourceWithUID(const String&, RealtimeMediaSource::Type, MediaConstraints*) override;
 
-    RefPtr<RealtimeMediaSourceQt5WebRTC> findSource(const String&, RealtimeMediaSource::Type);
-    RealtimeMediaSourceQt5WebRTCMap enumerateSources(bool needsAudio, bool needsVideo);
+    RefPtr<RealtimeMediaSourceWebRtcOrg> findSource(const String&, RealtimeMediaSource::Type);
+    RealtimeMediaSourceWebRtcOrgMap enumerateSources(bool needsAudio, bool needsVideo);
 
-    RealtimeMediaSourceQt5WebRTCMap m_sourceMap;
+    RealtimeMediaSourceWebRtcOrgMap m_sourceMap;
 };
 
 }
 
 #endif
 
-
-#endif  // _REALTIMEMEDIASOURCECENTERQT5WEBRTC_H_
+#endif  // _REALTIMEMEDIASOURCECENTERWEBRTCORG_H_
