@@ -1,20 +1,37 @@
 #ifndef _PEERCONNECTIONBACKENDWEBRTCORG_H_
 #define _PEERCONNECTIONBACKENDWEBRTCORG_H_
 
-#include "PeerConnectionBackend.h"
 #include "NotImplemented.h"
+#include "PeerConnectionBackend.h"
 
 #include "RealtimeMediaSourceCenterWebRtcOrg.h"
+
+#include "RTCDataChannel.h"
 #include "RTCDataChannelHandler.h"
+#include "RTCDataChannelHandlerClient.h"
+#include "RTCDataChannelHandlerClient.h"
+#include "RTCPeerConnection.h"
+#include "RTCStatsReport.h"
+
+#include "webrtc/api/datachannelinterface.h"
+#include "webrtc/api/mediaconstraintsinterface.h"
+#include "webrtc/api/mediastreaminterface.h"
+#include "webrtc/api/peerconnectionfactory.h"
+#include "webrtc/api/peerconnectioninterface.h"
 
 #include <wtf/HashMap.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
 
+enum {
+    InvalidRequestId = -1
+};
+
 class PeerConnectionBackendClient;
 
-class PeerConnectionBackendWebRtcOrg : public PeerConnectionBackend, public WRTCInt::RTCPeerConnectionClient {
+class PeerConnectionBackendWebRtcOrg : public PeerConnectionBackend,
+                                       public webrtc::PeerConnectionObserver {
 public:
     PeerConnectionBackendWebRtcOrg(PeerConnectionBackendClient*);
 
@@ -46,41 +63,80 @@ public:
 
     virtual std::unique_ptr<RTCDataChannelHandler> createDataChannel(const String&, const Dictionary&);
 
-    // WRTCInt::RTCPeerConnectionClient
-    virtual void requestSucceeded(int id, const WRTCInt::RTCSessionDescription& desc) override;
-    virtual void requestSucceeded(int id, const std::vector<std::unique_ptr<WRTCInt::RTCStatsReport>>& reports) override;
-    virtual void requestSucceeded(int id) override;
-    virtual void requestFailed(int id, const std::string& error) override;
-    virtual void negotiationNeeded() override;
-    virtual void didAddRemoteStream(WRTCInt::RTCMediaStream *stream,
-                                    const std::vector<std::string> &audioSources,
-                                    const std::vector<std::string> &videoSources) override;
-    virtual void didGenerateIceCandidate(const WRTCInt::RTCIceCandidate& candidate) override;
+    virtual void requestSucceeded(int id, const RefPtr<RTCSessionDescription> desc);
+    virtual void requestSucceeded(int id, const webrtc::StatsReports& reports);
+    virtual void requestSucceeded(int id);
+    virtual void requestFailed(int id, const std::string& error);
 
-    virtual void didChangeSignalingState(WRTCInt::SignalingState state) override;
-    virtual void didChangeIceGatheringState(WRTCInt::IceGatheringState state) override;
-    virtual void didChangeIceConnectionState(WRTCInt::IceConnectionState state) override;
-    virtual void didAddRemoteDataChannel(WRTCInt::RTCDataChannel* channel) override;
+    //PeerConnectionObserver
+    // Triggered when the SignalingState changed.
+    virtual void OnSignalingChange(
+        webrtc::PeerConnectionInterface::SignalingState new_state) override;
+
+    // Triggered when media is received on a new stream from remote peer.
+    virtual void OnAddStream(webrtc::MediaStreamInterface* stream) override;
+
+    // Triggered when a remote peer close a stream.
+    virtual void OnRemoveStream(webrtc::MediaStreamInterface* stream) override;
+
+    // Triggered when a remote peer open a data channel.
+    virtual void OnDataChannel(webrtc::DataChannelInterface* data_channel) override;
+
+    // Triggered when renegotiation is needed, for example the ICE has restarted.
+    virtual void OnRenegotiationNeeded() override;
+
+    // Called any time the IceConnectionState changes
+    virtual void OnIceConnectionChange(
+        webrtc::PeerConnectionInterface::IceConnectionState new_state) override;
+
+    // Called any time the IceGatheringState changes
+    virtual void OnIceGatheringChange(
+        webrtc::PeerConnectionInterface::IceGatheringState new_state) override;
+
+    // New Ice candidate have been found.
+    virtual void OnIceCandidate(const webrtc::IceCandidateInterface* candidate) override;
 
 private:
-    PeerConnectionBackendClient* m_client;
-    std::unique_ptr<WRTCInt::RTCPeerConnection> m_rtcConnection;
+    rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface> m_peerConnectionFactory;
+    rtc::scoped_refptr<webrtc::PeerConnectionInterface> m_peerConnection;
 
-    bool m_isNegotiationNeeded { false };
-    int m_sessionDescriptionRequestId { WRTCInt::InvalidRequestId };
+    PeerConnectionBackendClient* m_client;
+
+    bool m_isNegotiationNeeded{ false };
+    int m_sessionDescriptionRequestId{ InvalidRequestId };
     Optional<PeerConnection::SessionDescriptionPromise> m_sessionDescriptionPromise;
-    int m_voidRequestId { WRTCInt::InvalidRequestId };
+    int m_voidRequestId{ InvalidRequestId };
     Optional<PeerConnection::VoidPromise> m_voidPromise;
-    HashMap<int, Optional<PeerConnection::StatsPromise>> m_statsPromises;
+    HashMap<int, Optional<PeerConnection::StatsPromise> > m_statsPromises;
 };
 
 class RTCDataChannelHandlerWebRtcOrg
-    : public RTCDataChannelHandler
-    , public WRTCInt::RTCDataChannelClient
-{
-public:
-    RTCDataChannelHandlerWebRtcOrg(WRTCInt::RTCDataChannel* dataChannel);
+    : public RTCDataChannelHandler {
+    class RTCDataChannelObserver : public webrtc::DataChannelObserver,
+                                   public rtc::RefCountInterface {
+        RTCDataChannelHandlerWebRtcOrg* m_channel;
 
+    public:
+        explicit RTCDataChannelObserver(RTCDataChannelHandlerWebRtcOrg* channel)
+            : m_channel(channel)
+        {
+        }
+        void OnStateChange() override
+        {
+            m_channel->onStateChange();
+        }
+        void OnMessage(const webrtc::DataBuffer& buffer) override
+        {
+            m_channel->onMessage(buffer);
+        }
+    };
+
+public:
+    RTCDataChannelHandlerWebRtcOrg(webrtc::DataChannelInterface* channel);
+    ~RTCDataChannelHandlerWebRtcOrg()
+    {
+        closeDataChannel();
+    }
     // RTCDataChannelHandler
     void setClient(RTCDataChannelHandlerClient*) override;
     String label() override;
@@ -94,16 +150,18 @@ public:
     bool sendStringData(const String&) override;
     bool sendRawData(const char*, size_t) override;
     void close() override;
-
-    // WRTCInt::RTCDataChannelClient
-    void didChangeReadyState(WRTCInt::DataChannelState state) override;
-    void didReceiveStringData(const std::string& str) override;
-    void didReceiveRawData(const char* data, size_t sz) override;
+    void onStateChange();
+    void onMessage(const webrtc::DataBuffer& buffer);
+    void didReceiveStringData(const std::string& str);
+    void didReceiveRawData(const char* data, size_t sz);
+    void didDetectError();
 
 private:
-    std::unique_ptr<WRTCInt::RTCDataChannel> m_rtcDataChannel;
-    RTCDataChannelHandlerClient* m_client;
-};
+    void closeDataChannel();
 
+    rtc::scoped_refptr<webrtc::DataChannelInterface> m_rtcDataChannel;
+    RTCDataChannelHandlerClient* m_client;
+    rtc::scoped_refptr<RTCDataChannelObserver> m_observer;
+};
 }
-#endif  // _PEERCONNECTIONBACKENDWEBRTCORG_H_
+#endif // _PEERCONNECTIONBACKENDWEBRTCORG_H_
