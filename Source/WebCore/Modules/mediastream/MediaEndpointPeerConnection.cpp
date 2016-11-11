@@ -38,6 +38,7 @@
 #include "MediaStream.h"
 #include "MediaStreamTrack.h"
 #include "PeerMediaDescription.h"
+#include "RTCDataChannelHandler.h"
 #include "RTCIceCandidate.h"
 #include "RTCOfferAnswerOptions.h"
 #include "RTCRtpTransceiver.h"
@@ -51,12 +52,14 @@ namespace WebCore {
 using namespace PeerConnection;
 using namespace PeerConnectionStates;
 
+#if !USE(QT5WEBRTC)
 static std::unique_ptr<PeerConnectionBackend> createMediaEndpointPeerConnection(PeerConnectionBackendClient* client)
 {
     return std::unique_ptr<PeerConnectionBackend>(new MediaEndpointPeerConnection(client));
 }
 
 CreatePeerConnectionBackend PeerConnectionBackend::create = createMediaEndpointPeerConnection;
+#endif
 
 static String randomString(size_t length)
 {
@@ -591,7 +594,7 @@ RefPtr<RTCSessionDescription> MediaEndpointPeerConnection::pendingRemoteDescript
     return createRTCSessionDescription(m_pendingRemoteDescription.get());
 }
 
-void MediaEndpointPeerConnection::setConfiguration(RTCConfiguration& configuration)
+void MediaEndpointPeerConnection::setConfiguration(RTCConfiguration& configuration, const MediaConstraints&)
 {
     UNUSED_PARAM(configuration);
 
@@ -813,6 +816,18 @@ void MediaEndpointPeerConnection::gotRemoteSource(unsigned mdescIndex, RefPtr<Re
     UNUSED_PARAM(source);
 
     notImplemented();
+}
+
+std::unique_ptr<RTCDataChannelHandler> MediaEndpointPeerConnection::createDataChannel(const String&, const Dictionary&)
+{
+    notImplemented();
+    return nullptr;
+}
+
+Vector<RefPtr<MediaStream>> MediaEndpointPeerConnection::getRemoteStreams() const
+{
+    notImplemented();
+    return Vector<RefPtr<MediaStream>>();
 }
 
 } // namespace WebCore

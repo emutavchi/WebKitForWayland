@@ -40,10 +40,12 @@
 #include "Event.h"
 #include "ExceptionCode.h"
 #include "Frame.h"
+#include "MediaConstraintsImpl.h"
 #include "MediaStream.h"
 #include "MediaStreamTrack.h"
 #include "RTCConfiguration.h"
 #include "RTCDataChannel.h"
+#include "RTCDataChannelHandler.h"
 #include "RTCIceCandidate.h"
 #include "RTCIceCandidateEvent.h"
 #include "RTCOfferAnswerOptions.h"
@@ -58,13 +60,15 @@ namespace WebCore {
 using namespace PeerConnection;
 using namespace PeerConnectionStates;
 
-RefPtr<RTCPeerConnection> RTCPeerConnection::create(ScriptExecutionContext& context, const Dictionary& rtcConfiguration, ExceptionCode& ec)
+RefPtr<RTCPeerConnection> RTCPeerConnection::create(ScriptExecutionContext& context, const Dictionary& rtcConfiguration, const Dictionary& rtcConstraints, ExceptionCode& ec)
 {
     RefPtr<RTCConfiguration> configuration = RTCConfiguration::create(rtcConfiguration, ec);
     if (ec)
         return nullptr;
 
-    RefPtr<RTCPeerConnection> peerConnection = adoptRef(new RTCPeerConnection(context, WTFMove(configuration), ec));
+    RefPtr<MediaConstraints> constraints = MediaConstraintsImpl::create(rtcConstraints);
+
+    RefPtr<RTCPeerConnection> peerConnection = adoptRef(new RTCPeerConnection(context, WTFMove(configuration), WTFMove(constraints), ec));
     peerConnection->suspendIfNeeded();
     if (ec)
         return nullptr;
@@ -72,12 +76,13 @@ RefPtr<RTCPeerConnection> RTCPeerConnection::create(ScriptExecutionContext& cont
     return peerConnection;
 }
 
-RTCPeerConnection::RTCPeerConnection(ScriptExecutionContext& context, RefPtr<RTCConfiguration>&& configuration, ExceptionCode& ec)
+RTCPeerConnection::RTCPeerConnection(ScriptExecutionContext& context, RefPtr<RTCConfiguration>&& configuration, RefPtr<MediaConstraints>&& constraints, ExceptionCode& ec)
     : ActiveDOMObject(&context)
     , m_signalingState(SignalingState::Stable)
     , m_iceGatheringState(IceGatheringState::New)
     , m_iceConnectionState(IceConnectionState::New)
     , m_configuration(WTFMove(configuration))
+    , m_constraints(WTFMove(constraints))
 {
     Document& document = downcast<Document>(context);
 
@@ -92,12 +97,35 @@ RTCPeerConnection::RTCPeerConnection(ScriptExecutionContext& context, RefPtr<RTC
         return;
     }
 
-    m_backend->setConfiguration(*m_configuration);
+    m_backend->setConfiguration(*m_configuration, *m_constraints);
 }
 
 RTCPeerConnection::~RTCPeerConnection()
 {
     stop();
+}
+
+void RTCPeerConnection::addStream(Ref<MediaStream>&& stream, ExceptionCode& ec)
+{
+    if (m_signalingState == SignalingState::Closed) {
+        ec = INVALID_STATE_ERR;
+        return;
+    }
+
+    if (m_localStreams.contains(stream.ptr()))
+        return;
+
+    Vector<MediaStream*> streams;
+    streams.append(stream.ptr());
+    for (auto& track : stream->getTracks()) {
+        ExceptionCode ignore;
+        addTrack(track.releaseNonNull(), streams, ignore);
+    }
+}
+
+Vector<RefPtr<MediaStream>> RTCPeerConnection::getRemoteStreams() const
+{
+    return m_backend->getRemoteStreams();
 }
 
 RefPtr<RTCRtpSender> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>&& track, const Vector<MediaStream*>& streams, ExceptionCode& ec)
@@ -153,6 +181,13 @@ RefPtr<RTCRtpSender> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>&& track, 
 
         sender = transceiver->sender();
         m_transceiverSet->append(WTFMove(transceiver));
+    }
+
+    // Legacy mode
+    for (auto stream : streams) {
+        RefPtr<MediaStream> streamPtr = stream;
+        if (!m_localStreams.contains(streamPtr))
+            m_localStreams.append(streamPtr);
     }
 
     m_backend->markAsNeedingNegotiation();
@@ -403,7 +438,7 @@ void RTCPeerConnection::setConfiguration(const Dictionary& configuration, Except
         return;
 
     m_configuration = WTFMove(newConfiguration);
-    m_backend->setConfiguration(*m_configuration);
+    m_backend->setConfiguration(*m_configuration, *m_constraints);
 }
 
 void RTCPeerConnection::privateGetStats(MediaStreamTrack* selector, PeerConnection::StatsPromise&& promise)
@@ -411,14 +446,23 @@ void RTCPeerConnection::privateGetStats(MediaStreamTrack* selector, PeerConnecti
     m_backend->getStats(selector, WTFMove(promise));
 }
 
-RefPtr<RTCDataChannel> RTCPeerConnection::createDataChannel(String, const Dictionary&, ExceptionCode& ec)
+RefPtr<RTCDataChannel> RTCPeerConnection::createDataChannel(String label, const Dictionary& options, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingState::Closed) {
         ec = INVALID_STATE_ERR;
         return nullptr;
     }
 
-    return nullptr;
+    std::unique_ptr<RTCDataChannelHandler> handler = m_backend->createDataChannel(label, options);
+    if (!handler)
+        return nullptr;
+
+    RefPtr<RTCDataChannel> channel = RTCDataChannel::create(scriptExecutionContext(), WTFMove(handler));
+    if (!channel)
+        return nullptr;
+
+    m_dataChannels.append(channel);
+    return channel.release();
 }
 
 void RTCPeerConnection::close()

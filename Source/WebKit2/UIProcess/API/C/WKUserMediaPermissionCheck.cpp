@@ -25,7 +25,7 @@
  */
 
 #include "config.h"
-#include "WKUserMediaPermissionCheck.h"
+#include <WebKit/WKUserMediaPermissionCheck.h>
 
 #include "UserMediaPermissionCheckProxy.h"
 #include "WKAPICast.h"

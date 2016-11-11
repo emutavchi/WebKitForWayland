@@ -40,6 +40,7 @@
 #include "EventTarget.h"
 // FIXME: Workaround for bindings bug http://webkit.org/b/150121
 #include "JSMediaStream.h"
+#include "MediaStream.h"
 #include "PeerConnectionBackend.h"
 #include "RTCRtpTransceiver.h"
 #include "ScriptWrappable.h"
@@ -57,10 +58,11 @@ class RTCIceCandidate;
 class RTCPeerConnectionErrorCallback;
 class RTCSessionDescription;
 class RTCStatsCallback;
+class MediaConstraints;
 
 class RTCPeerConnection final : public RefCounted<RTCPeerConnection>, public PeerConnectionBackendClient, public RTCRtpSenderClient, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
-    static RefPtr<RTCPeerConnection> create(ScriptExecutionContext&, const Dictionary& rtcConfiguration, ExceptionCode&);
+    static RefPtr<RTCPeerConnection> create(ScriptExecutionContext&, const Dictionary& rtcConfiguration, const Dictionary& rtcConstraints, ExceptionCode&);
     ~RTCPeerConnection();
 
     const Vector<RefPtr<RTCRtpSender>>& getSenders() const { return m_transceiverSet->getSenders(); }
@@ -116,8 +118,12 @@ public:
     using RefCounted<RTCPeerConnection>::ref;
     using RefCounted<RTCPeerConnection>::deref;
 
+    // Deprecated or removed from spec
+    void addStream(Ref<MediaStream>&&, ExceptionCode&);
+    Vector<RefPtr<MediaStream>> getRemoteStreams() const;
+    Vector<RefPtr<MediaStream>> getLocalStreams() const {return m_localStreams; }
 private:
-    RTCPeerConnection(ScriptExecutionContext&, RefPtr<RTCConfiguration>&&, ExceptionCode&);
+    RTCPeerConnection(ScriptExecutionContext&, RefPtr<RTCConfiguration>&&, RefPtr<MediaConstraints>&&, ExceptionCode&);
 
     RefPtr<RTCRtpTransceiver> completeAddTransceiver(Ref<RTCRtpTransceiver>&&, const RtpTransceiverInit&);
 
@@ -158,6 +164,10 @@ private:
     std::unique_ptr<PeerConnectionBackend> m_backend;
 
     RefPtr<RTCConfiguration> m_configuration;
+    RefPtr<MediaConstraints> m_constraints;
+
+    // Deprecated or removed from spec
+    Vector<RefPtr<MediaStream>> m_localStreams;
 };
 
 } // namespace WebCore

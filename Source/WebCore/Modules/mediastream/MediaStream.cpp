@@ -214,9 +214,10 @@ bool MediaStream::internalAddTrack(Ref<MediaStreamTrack>&& trackToAdd, StreamMod
     auto& track = *result.iterator->value;
     track.addObserver(this);
 
-    if (streamModifier == StreamModifier::DomAPI)
+    if (streamModifier == StreamModifier::DomAPI) {
         m_private->addTrack(&track.privateTrack(), MediaStreamPrivate::NotifyClientOption::DontNotify);
-    else
+        setIsActive(m_private->active());
+    } else
         dispatchEvent(MediaStreamTrackEvent::create(eventNames().addtrackEvent, false, false, &track));
 
     return true;

@@ -115,6 +115,12 @@
     attribute EventHandler oniceconnectionstatechange;
     attribute EventHandler onicegatheringstatechange;
     attribute EventHandler ondatachannel;
+
+    // Deprecated or removed from spec
+    [StrictTypeChecking, RaisesException] void addStream(MediaStream stream);
+    sequence<MediaStream> getLocalStreams();
+    sequence<MediaStream> getRemoteStreams();
+    attribute EventHandler onaddstream;
 };
 
 // This enum is mirrored in RTCRtpTransceiver.idl
