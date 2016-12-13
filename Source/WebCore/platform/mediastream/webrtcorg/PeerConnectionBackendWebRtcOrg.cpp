@@ -1,13 +1,16 @@
 #include "config.h"
 #include "PeerConnectionBackendWebRtcOrg.h"
-
-#include "ScriptExecutionContext.h"
-#include "UUID.h"
+#include "Logging.h"
 
 #include "DOMError.h"
 #include "JSDOMError.h"
 #include "JSRTCSessionDescription.h"
 #include "JSRTCStatsResponse.h"
+#include "MediaStream.h"
+#include "MediaStreamCreationClient.h"
+#include "MediaStreamPrivate.h"
+#include "MediaStreamTrack.h"
+#include "MediaStreamTrackSourcesRequestClient.h"
 #include "RTCConfiguration.h"
 #include "RTCDataChannelHandlerClient.h"
 #include "RTCIceCandidate.h"
@@ -15,21 +18,36 @@
 #include "RTCOfferAnswerOptions.h"
 #include "RTCRtpSender.h"
 #include "RTCSessionDescription.h"
+#include "RTCStatsReport.h"
 #include "RTCStatsResponse.h"
+#include "ScriptExecutionContext.h"
+#include "UUID.h"
 
-#include "MediaStream.h"
-#include "MediaStreamCreationClient.h"
-#include "MediaStreamPrivate.h"
-#include "MediaStreamTrack.h"
-#include "MediaStreamTrackSourcesRequestClient.h"
+#include "webrtc/api/datachannelinterface.h"
+#include "webrtc/api/jsep.h"
+#include "webrtc/api/peerconnectioninterface.h"
+#include "webrtc/api/statstypes.h"
+
+#include "webrtc/media/base/videocapturerfactory.h"
+
+#include "WebRtcOrgUtils.h"
 
 namespace WebCore {
 
 using namespace PeerConnection;
 
+int generateNextId()
+{
+    static int gRequestId = 0;
+    if (gRequestId == std::numeric_limits<int>::max()) {
+        gRequestId = 0;
+    }
+    return ++gRequestId;
+}
+
 static std::unique_ptr<PeerConnectionBackend> createPeerConnectionBackendWebRtcOrg(PeerConnectionBackendClient* client)
 {
-    WRTCInt::init();
+    WebRtcOrgUtils::getInstance()->initializeWebRtcOrg();
     return std::unique_ptr<PeerConnectionBackend>(new PeerConnectionBackendWebRtcOrg(client));
 }
 
@@ -43,71 +61,175 @@ void enableWebRtcOrgPeerConnectionBackend()
 PeerConnectionBackendWebRtcOrg::PeerConnectionBackendWebRtcOrg(PeerConnectionBackendClient* client)
     : m_client(client)
 {
-    m_rtcConnection.reset(getRTCMediaSourceCenter().createPeerConnection(this));
+    WebRtcOrgUtils* instance = WebRtcOrgUtils::getInstance();
+    m_peerConnectionFactory = instance->getPeerConnectionFactory();
 }
+
+class WRTCSetSessionDescriptionObserver : public webrtc::SetSessionDescriptionObserver {
+    PeerConnectionBackendWebRtcOrg* m_backend;
+    int m_requestId;
+
+public:
+    WRTCSetSessionDescriptionObserver(PeerConnectionBackendWebRtcOrg* backend, int id)
+        : m_backend(backend)
+        , m_requestId(id)
+    {
+    }
+
+    void OnSuccess() override
+    {
+        m_backend->requestSucceeded(m_requestId);
+    }
+
+    void OnFailure(const std::string& error) override
+    {
+        LOG(Media, "%s", error.c_str());
+        m_backend->requestFailed(m_requestId, error);
+    }
+};
+
+class WRTCCreateSessionDescriptionObserver : public webrtc::CreateSessionDescriptionObserver {
+    PeerConnectionBackendWebRtcOrg* m_backend;
+    int m_requestId;
+
+public:
+    WRTCCreateSessionDescriptionObserver(PeerConnectionBackendWebRtcOrg* backend, int id)
+        : m_backend(backend)
+        , m_requestId(id)
+    {
+    }
+
+    void OnSuccess(webrtc::SessionDescriptionInterface* desc) override
+    {
+        std::unique_ptr<webrtc::SessionDescriptionInterface> holder(desc);
+        std::string descStr;
+        if (!desc->ToString(&descStr)) {
+            std::string error = "Failed to get session description string";
+            OnFailure(error);
+            return;
+        }
+        RefPtr<RTCSessionDescription> sessionDescription = RTCSessionDescription::create(desc->type().c_str(), descStr.c_str());
+
+        m_backend->requestSucceeded(m_requestId, sessionDescription);
+    }
+    void OnFailure(const std::string& error) override
+    {
+        LOG(Media, "%s", error.c_str());
+        m_backend->requestFailed(m_requestId, error);
+    }
+};
+
+/*
+ * Implementation of webrtc::MediaConstraintsInterface
+ */
+class WRTCMediaConstraints : public webrtc::MediaConstraintsInterface {
+    webrtc::MediaConstraintsInterface::Constraints m_mandatory;
+    webrtc::MediaConstraintsInterface::Constraints m_optional;
+
+public:
+    explicit WRTCMediaConstraints(const MediaConstraints& constraints)
+    {
+        Vector<MediaConstraint> mediaConstraints;
+        constraints.getMandatoryConstraints(mediaConstraints);
+
+        for (auto& c : mediaConstraints) {
+            std::string name = c.m_name.utf8().data();
+            std::string value = c.m_value.utf8().data();
+            m_mandatory.push_back(webrtc::MediaConstraintsInterface::Constraint(name, value));
+        }
+
+        mediaConstraints.clear();
+        constraints.getOptionalConstraints(mediaConstraints);
+        for (auto& c : mediaConstraints) {
+            std::string name = c.m_name.utf8().data();
+            std::string value = c.m_value.utf8().data();
+            m_optional.push_back(webrtc::MediaConstraintsInterface::Constraint(name, value));
+        }
+    }
+
+    const MediaConstraintsInterface::Constraints& GetMandatory() const override
+    {
+        return m_mandatory;
+    }
+
+    const MediaConstraintsInterface::Constraints& GetOptional() const override
+    {
+        return m_optional;
+    }
+};
 
 void PeerConnectionBackendWebRtcOrg::createOffer(RTCOfferOptions& options, PeerConnection::SessionDescriptionPromise&& promise)
 {
-    ASSERT(WRTCInt::InvalidRequestId == m_sessionDescriptionRequestId);
+    ASSERT(InvalidRequestId == m_sessionDescriptionRequestId);
     ASSERT(!m_sessionDescriptionPromise);
 
-    WRTCInt::RTCOfferAnswerOptions rtcOptions;
-    rtcOptions[WRTCInt::kOfferToReceiveAudio] = !!options.offerToReceiveAudio();
-    rtcOptions[WRTCInt::kOfferToReceiveVideo] = !!options.offerToReceiveVideo();
-    rtcOptions[WRTCInt::kIceRestart] = options.iceRestart();
-    rtcOptions[WRTCInt::kVoiceActivityDetection] = options.voiceActivityDetection();
+    webrtc::PeerConnectionInterface::RTCOfferAnswerOptions wrtcOptions;
+    wrtcOptions.offer_to_receive_video = options.offerToReceiveVideo();
+    wrtcOptions.offer_to_receive_audio = options.offerToReceiveAudio();
+    wrtcOptions.voice_activity_detection = options.voiceActivityDetection();
+    wrtcOptions.ice_restart = options.iceRestart();
 
-    int id = m_rtcConnection->createOffer(rtcOptions);
-    if (WRTCInt::InvalidRequestId != id) {
-        m_sessionDescriptionRequestId = id;
-        m_sessionDescriptionPromise = WTFMove(promise);
-    } else {
-        promise.reject(DOMError::create("Failed to create offer"));
-    }
+    int id = generateNextId();
+
+    webrtc::CreateSessionDescriptionObserver* observer = new rtc::RefCountedObject<WRTCCreateSessionDescriptionObserver>(this, id);
+    m_peerConnection->CreateOffer(observer, wrtcOptions);
+    m_sessionDescriptionRequestId = id;
+    m_sessionDescriptionPromise = WTFMove(promise);
 }
 
 void PeerConnectionBackendWebRtcOrg::createAnswer(RTCAnswerOptions& options, PeerConnection::SessionDescriptionPromise&& promise)
 {
-    ASSERT(WRTCInt::InvalidRequestId == m_sessionDescriptionRequestId);
+    ASSERT(InvalidRequestId == m_sessionDescriptionRequestId);
     ASSERT(!m_sessionDescriptionPromise);
+    int requestId = generateNextId();
 
-    WRTCInt::RTCOfferAnswerOptions rtcOptions;
-    rtcOptions[WRTCInt::kVoiceActivityDetection] = options.voiceActivityDetection();
+    webrtc::PeerConnectionInterface::RTCOfferAnswerOptions wrtcOptions;
+    wrtcOptions.voice_activity_detection = options.voiceActivityDetection();
+    webrtc::CreateSessionDescriptionObserver* observer = new rtc::RefCountedObject<WRTCCreateSessionDescriptionObserver>(this, requestId);
 
-    int id = m_rtcConnection->createAnswer(rtcOptions);
-    if (WRTCInt::InvalidRequestId != id) {
-        m_sessionDescriptionRequestId = id;
-        m_sessionDescriptionPromise = WTFMove(promise);
-    } else {
-        promise.reject(DOMError::create("Failed to create answer"));
-    }
+    m_peerConnection->CreateAnswer(observer, wrtcOptions);
+
+    m_sessionDescriptionRequestId = requestId;
+
+    m_sessionDescriptionRequestId = requestId;
+    m_sessionDescriptionPromise = WTFMove(promise);
 }
 
 void PeerConnectionBackendWebRtcOrg::setLocalDescription(RTCSessionDescription& desc, PeerConnection::VoidPromise&& promise)
 {
-    ASSERT(WRTCInt::InvalidRequestId == m_voidRequestId);
+    UNUSED_PARAM(promise);
+    ASSERT(InvalidRequestId == m_voidRequestId);
     ASSERT(!m_voidPromise);
+    int requestId = generateNextId();
+    webrtc::SdpParseError error;
+    webrtc::SetSessionDescriptionObserver* observer = new rtc::RefCountedObject<WRTCSetSessionDescriptionObserver>(this, requestId);
 
-    WRTCInt::RTCSessionDescription localDesc;
-    localDesc.type = desc.type().utf8().data();
-    localDesc.sdp = desc.sdp().utf8().data();
-
-    int id = m_rtcConnection->setLocalDescription(localDesc);
-    if (WRTCInt::InvalidRequestId != id) {
-        m_voidRequestId = id;
-        m_voidPromise = WTFMove(promise);
-    } else {
-        promise.reject(DOMError::create("Failed to parse local description"));
+    webrtc::SessionDescriptionInterface* wrtcDesc = webrtc::CreateSessionDescription(
+        desc.type().utf8().data(),
+        desc.sdp().utf8().data(),
+        &error);
+    if (!wrtcDesc) {
+        LOG(Media, "Failed to create session description, error=%s line=%s", error.description.c_str(), error.line.c_str());
+        m_voidRequestId = InvalidRequestId;
+        return;
     }
+
+    m_peerConnection->SetLocalDescription(observer, wrtcDesc);
+    m_voidRequestId = requestId;
+    m_voidPromise = WTFMove(promise);
 }
 RefPtr<RTCSessionDescription> PeerConnectionBackendWebRtcOrg::localDescription() const
 {
     // TODO: pendingLocalDescription/currentLocalDescription
-    WRTCInt::RTCSessionDescription localDesc;
-    m_rtcConnection->localDescription(localDesc);
-    String type = localDesc.type.c_str();
-    String sdp = localDesc.sdp.c_str();
-    return RTCSessionDescription::create(type, sdp);
+    const webrtc::SessionDescriptionInterface* wrtcDesc = m_peerConnection->local_description();
+    std::string sdp;
+    if (!wrtcDesc->ToString(&sdp)) {
+        LOG(Media, "Failed to get local description string");
+        return nullptr;
+    }
+    String type = wrtcDesc->type().c_str();
+    String sdpS = sdp.c_str();
+    return RTCSessionDescription::create(type, sdpS);
 }
 RefPtr<RTCSessionDescription> PeerConnectionBackendWebRtcOrg::currentLocalDescription() const
 {
@@ -120,29 +242,38 @@ RefPtr<RTCSessionDescription> PeerConnectionBackendWebRtcOrg::pendingLocalDescri
 
 void PeerConnectionBackendWebRtcOrg::setRemoteDescription(RTCSessionDescription& desc, PeerConnection::VoidPromise&& promise)
 {
-    ASSERT(WRTCInt::InvalidRequestId == m_voidRequestId);
+    ASSERT(InvalidRequestId == m_voidRequestId);
     ASSERT(!m_voidPromise);
+    int requestId = generateNextId();
+    webrtc::SdpParseError error;
+    webrtc::SetSessionDescriptionObserver* observer = new rtc::RefCountedObject<WRTCSetSessionDescriptionObserver>(this, requestId);
 
-    WRTCInt::RTCSessionDescription remoteDesc;
-    remoteDesc.type = desc.type().utf8().data();
-    remoteDesc.sdp = desc.sdp().utf8().data();
-
-    int id = m_rtcConnection->setRemoteDescription(remoteDesc);
-    if (WRTCInt::InvalidRequestId != id) {
-        m_voidRequestId = id;
-        m_voidPromise = WTFMove(promise);
-    } else {
-        promise.reject(DOMError::create("Failed to parse remote description"));
+    webrtc::SessionDescriptionInterface* wrtcDesc = webrtc::CreateSessionDescription(
+        desc.type().utf8().data(),
+        desc.sdp().utf8().data(),
+        &error);
+    if (!wrtcDesc) {
+        LOG(Media, "Failed to create session description, error=%s line=%s", error.description.c_str(), error.line.c_str());
+        m_voidRequestId = InvalidRequestId;
+        return;
     }
+
+    m_peerConnection->SetRemoteDescription(observer, wrtcDesc);
+    m_voidRequestId = requestId;
+    m_voidPromise = WTFMove(promise);
 }
 RefPtr<RTCSessionDescription> PeerConnectionBackendWebRtcOrg::remoteDescription() const
 {
     // TODO: pendingRemoteDescription/currentRemoteDescription
-    WRTCInt::RTCSessionDescription remoteDesc;
-    m_rtcConnection->remoteDescription(remoteDesc);
-    String type = remoteDesc.type.c_str();
-    String sdp = remoteDesc.sdp.c_str();
-    return RTCSessionDescription::create(type, sdp);
+    const webrtc::SessionDescriptionInterface* wrtcDesc = m_peerConnection->remote_description();
+    std::string sdp;
+    if (!wrtcDesc->ToString(&sdp)) {
+        LOG(Media, "Failed to get remote description");
+        return nullptr;
+    }
+    String type = wrtcDesc->type().c_str();
+    String sdpS = sdp.c_str();
+    return RTCSessionDescription::create(type, sdpS);
 }
 RefPtr<RTCSessionDescription> PeerConnectionBackendWebRtcOrg::currentRemoteDescription() const
 {
@@ -153,45 +284,53 @@ RefPtr<RTCSessionDescription> PeerConnectionBackendWebRtcOrg::pendingRemoteDescr
     return RefPtr<RTCSessionDescription>();
 }
 
-void PeerConnectionBackendWebRtcOrg::setConfiguration(RTCConfiguration& config, const MediaConstraints& constraints)
+void PeerConnectionBackendWebRtcOrg::setConfiguration(RTCConfiguration& rtcConfig, const MediaConstraints& constraints)
 {
-    WRTCInt::RTCConfiguration wrtcConfig;
-    for(auto& server : config.iceServers()) {
-        WRTCInt::RTCIceServer wrtcICEServer;
-        wrtcICEServer.credential = server->credential().utf8().data();
-        wrtcICEServer.username = server->username().utf8().data();
-        for(auto& url : server->urls()) {
-            wrtcICEServer.urls.push_back(url.utf8().data());
+    webrtc::PeerConnectionInterface::IceServers iceServers;
+    for (auto& server : rtcConfig.iceServers()) {
+        webrtc::PeerConnectionInterface::IceServer wrtcServer;
+        wrtcServer.username = server->credential().utf8().data();
+        wrtcServer.password = server->username().utf8().data();
+        for (auto& url : server->urls()) {
+            wrtcServer.urls.push_back(url.utf8().data());
         }
-        wrtcConfig.iceServers.push_back(wrtcICEServer);
+        iceServers.push_back(wrtcServer);
     }
-
-    WRTCInt::RTCMediaConstraints wrtcConstraints;
-    Vector<MediaConstraint> mediaConstraints;
-    constraints.getMandatoryConstraints(mediaConstraints);
-    for (auto& c : mediaConstraints) {
-        std::string name = c.m_name.utf8().data();
-        std::string value = c.m_value.utf8().data();
-        wrtcConstraints[name] = value;
+    std::unique_ptr<WRTCMediaConstraints> cts(new WRTCMediaConstraints(constraints));
+    webrtc::PeerConnectionInterface::RTCConfiguration configuration;
+    configuration.servers = iceServers;
+    if (m_peerConnection == nullptr) {
+        webrtc::PeerConnectionInterface::RTCConfiguration configuration;
+        configuration.servers = iceServers;
+        m_peerConnection = m_peerConnectionFactory->CreatePeerConnection(
+            configuration, cts.get(), nullptr, nullptr, this);
+        if (m_peerConnection == nullptr) {
+            LOG(Media, "Failed in PeerConnectionInterface::CreatePeerConnection");
+            return;
+        }
+        if (!m_peerConnection->SetConfiguration(configuration)) {
+            LOG(Media, "Failed in PeerConnectionInterface::SetConfiguration");
+            return;
+        }
+    } else if (!m_peerConnection->UpdateIce(iceServers, cts.get())) {
+        LOG(Media, "Failed in PeerConnectionInterface::UpdateIce");
     }
-    mediaConstraints.clear();
-    constraints.getOptionalConstraints(mediaConstraints);
-    for (auto& c : mediaConstraints) {
-        std::string name = c.m_name.utf8().data();
-        std::string value = c.m_value.utf8().data();
-        wrtcConstraints[name] = value;
-    }
-
-    m_rtcConnection->setConfiguration(wrtcConfig, wrtcConstraints);
 }
 
 void PeerConnectionBackendWebRtcOrg::addIceCandidate(RTCIceCandidate& candidate, PeerConnection::VoidPromise&& promise)
 {
-    WRTCInt::RTCIceCandidate iceCandidate;
-    iceCandidate.sdp = candidate.candidate().utf8().data();
-    iceCandidate.sdpMid = candidate.sdpMid().utf8().data();
-    iceCandidate.sdpMLineIndex = candidate.sdpMLineIndex().valueOr(0);
-    bool rc = m_rtcConnection->addIceCandidate(iceCandidate);
+    webrtc::SdpParseError error;
+    std::unique_ptr<webrtc::IceCandidateInterface> iceCandidate(
+        webrtc::CreateIceCandidate(candidate.sdpMid().utf8().data(),
+            candidate.sdpMLineIndex().valueOr(0),
+            candidate.candidate().utf8().data(),
+            &error));
+    if (iceCandidate == nullptr) {
+        LOG(Media, "Failed to add ICE candidate, error=%s line=%s", error.description.c_str(), error.line.c_str());
+        return;
+    }
+
+    bool rc = m_peerConnection->AddIceCandidate(iceCandidate.get());
     if (rc) {
         promise.resolve(nullptr);
     } else {
@@ -199,10 +338,32 @@ void PeerConnectionBackendWebRtcOrg::addIceCandidate(RTCIceCandidate& candidate,
     }
 }
 
-void PeerConnectionBackendWebRtcOrg::getStats(MediaStreamTrack*, PeerConnection::StatsPromise&& promise)
+class WRTCStatsObserver : public webrtc::StatsObserver {
+    PeerConnectionBackendWebRtcOrg* m_backend;
+    unsigned int m_requestId;
+
+public:
+    WRTCStatsObserver(PeerConnectionBackendWebRtcOrg* backend, unsigned int id)
+        : m_backend(backend)
+        , m_requestId(id)
+    {
+    }
+
+    void OnComplete(const webrtc::StatsReports& reports) override
+    {
+        m_backend->requestSucceeded(m_requestId, reports);
+    }
+};
+
+void PeerConnectionBackendWebRtcOrg::getStats(MediaStreamTrack* track, PeerConnection::StatsPromise&& promise)
 {
-    int id = m_rtcConnection->getStats();
-    if (WRTCInt::InvalidRequestId != id) {
+    UNUSED_PARAM(track);
+    rtc::scoped_refptr<WRTCStatsObserver> observer(
+        new rtc::RefCountedObject<WRTCStatsObserver>(this, generateNextId()));
+    webrtc::PeerConnectionInterface::StatsOutputLevel level = webrtc::PeerConnectionInterface::kStatsOutputLevelStandard;
+
+    bool id = m_peerConnection->GetStats(observer, nullptr, level);
+    if (id) {
         m_statsPromises.add(id, WTFMove(promise));
     } else {
         promise.reject(DOMError::create("Failed to get stats"));
@@ -217,7 +378,7 @@ void PeerConnectionBackendWebRtcOrg::replaceTrack(RTCRtpSender&, MediaStreamTrac
 
 void PeerConnectionBackendWebRtcOrg::stop()
 {
-    m_rtcConnection->stop();
+    m_peerConnection->Close();
 }
 
 bool PeerConnectionBackendWebRtcOrg::isNegotiationNeeded() const
@@ -227,12 +388,12 @@ bool PeerConnectionBackendWebRtcOrg::isNegotiationNeeded() const
 
 void PeerConnectionBackendWebRtcOrg::markAsNeedingNegotiation()
 {
-    Vector<RefPtr<RTCRtpSender>> senders = m_client->getSenders();
-    for(auto &sender : senders) {
+    Vector<RefPtr<RTCRtpSender> > senders = m_client->getSenders();
+    for (auto& sender : senders) {
         RealtimeMediaSource& source = sender->track().source();
-        WRTCInt::RTCMediaStream* stream = static_cast<RealtimeMediaSourceWebRtcOrg&>(source).rtcStream();
+        webrtc::MediaStreamInterface* stream = static_cast<RealtimeMediaSourceWebRtcOrg&>(source).rtcStream();
         if (stream) {
-            m_rtcConnection->addStream(stream);
+            m_peerConnection->AddStream(stream);
             break;
         }
     }
@@ -245,7 +406,7 @@ void PeerConnectionBackendWebRtcOrg::clearNegotiationNeededState()
 
 std::unique_ptr<RTCDataChannelHandler> PeerConnectionBackendWebRtcOrg::createDataChannel(const String& label, const Dictionary& options)
 {
-    WRTCInt::DataChannelInit initData;
+    webrtc::DataChannelInit initData;
     String maxRetransmitsStr;
     String maxRetransmitTimeStr;
     String protocolStr;
@@ -263,49 +424,199 @@ std::unique_ptr<RTCDataChannelHandler> PeerConnectionBackendWebRtcOrg::createDat
     if (maxRetransmitsConversion && maxRetransmitTimeConversion) {
         return nullptr;
     }
-    WRTCInt::RTCDataChannel* channel = m_rtcConnection->createDataChannel(label.utf8().data(), initData);
-    return channel
-        ? std::make_unique<RTCDataChannelHandlerWebRtcOrg>(channel)
-        : nullptr;
+    rtc::scoped_refptr<webrtc::DataChannelInterface> channel = m_peerConnection->CreateDataChannel(label.utf8().data(), &initData);
+    if (channel != nullptr) {
+        return std::make_unique<RTCDataChannelHandlerWebRtcOrg>(channel.get());
+    }
+    return nullptr;
 }
 
-// ===========  WRTCInt::RTCPeerConnectionClient ==========
+void PeerConnectionBackendWebRtcOrg::OnAddStream(webrtc::MediaStreamInterface* stream)
+{
+    ASSERT(m_client);
+    std::vector<std::string> audioDevices;
+    for (const auto& track : stream->GetAudioTracks()) {
+        audioDevices.push_back(track->id());
+    }
+    std::vector<std::string> videoDevices;
+    for (const auto& track : stream->GetVideoTracks()) {
+        videoDevices.push_back(track->id());
+    }
 
-void PeerConnectionBackendWebRtcOrg::requestSucceeded(int id, const WRTCInt::RTCSessionDescription& desc)
+    ASSERT(m_client);
+
+    Vector<RefPtr<RealtimeMediaSource> > audioSources;
+    Vector<RefPtr<RealtimeMediaSource> > videoSources;
+
+    for (auto& device : audioDevices) {
+        String name(device.c_str());
+        String id(createCanonicalUUIDString());
+        RefPtr<RealtimeMediaSourceWebRtcOrg> audioSource = adoptRef(new RealtimeAudioSourceWebRtcOrg(id, name));
+        audioSource->setRTCStream(stream);
+        audioSources.append(audioSource.release());
+    }
+    for (auto& device : videoDevices) {
+        String name(device.c_str());
+        String id(createCanonicalUUIDString());
+        RefPtr<RealtimeMediaSourceWebRtcOrg> videoSource = adoptRef(new RealtimeVideoSourceWebRtcOrg(id, name));
+        videoSource->setRTCStream(stream);
+        videoSources.append(videoSource.release());
+    }
+    String id = stream->label().c_str();
+    RefPtr<MediaStreamPrivate> privateStream = MediaStreamPrivate::create(id, audioSources, videoSources);
+    RefPtr<MediaStream> mediaStream = MediaStream::create(*m_client->scriptExecutionContext(), privateStream.copyRef());
+    privateStream->startProducingData();
+    m_client->addRemoteStream(WTFMove(mediaStream));
+}
+
+void PeerConnectionBackendWebRtcOrg::OnRemoveStream(webrtc::MediaStreamInterface* /*stream*/)
+{
+    LOG(Media, "Not Implemented");
+}
+
+void PeerConnectionBackendWebRtcOrg::OnRenegotiationNeeded()
+{
+    m_isNegotiationNeeded = true;
+    m_client->scheduleNegotiationNeededEvent();
+}
+
+void PeerConnectionBackendWebRtcOrg::OnIceConnectionChange(
+    webrtc::PeerConnectionInterface::IceConnectionState state)
+{
+    ASSERT(m_client);
+    PeerConnectionStates::IceConnectionState iceConnectionState = PeerConnectionStates::IceConnectionState::New;
+    switch (state) {
+    case webrtc::PeerConnectionInterface::kIceConnectionNew:
+        iceConnectionState = PeerConnectionStates::IceConnectionState::New;
+        break;
+    case webrtc::PeerConnectionInterface::kIceConnectionChecking:
+        iceConnectionState = PeerConnectionStates::IceConnectionState::Checking;
+        break;
+    case webrtc::PeerConnectionInterface::kIceConnectionConnected:
+        iceConnectionState = PeerConnectionStates::IceConnectionState::Connected;
+        break;
+    case webrtc::PeerConnectionInterface::kIceConnectionCompleted:
+        iceConnectionState = PeerConnectionStates::IceConnectionState::Completed;
+        break;
+    case webrtc::PeerConnectionInterface::kIceConnectionFailed:
+        iceConnectionState = PeerConnectionStates::IceConnectionState::Failed;
+        break;
+    case webrtc::PeerConnectionInterface::kIceConnectionDisconnected:
+        iceConnectionState = PeerConnectionStates::IceConnectionState::Disconnected;
+        break;
+    case webrtc::PeerConnectionInterface::kIceConnectionClosed:
+        iceConnectionState = PeerConnectionStates::IceConnectionState::Closed;
+        break;
+    default:
+        return;
+    }
+    m_client->updateIceConnectionState(iceConnectionState);
+}
+
+void PeerConnectionBackendWebRtcOrg::OnIceGatheringChange(
+    webrtc::PeerConnectionInterface::IceGatheringState state)
+{
+    ASSERT(m_client);
+    PeerConnectionStates::IceGatheringState iceGatheringState = PeerConnectionStates::IceGatheringState::New;
+    switch (state) {
+    case webrtc::PeerConnectionInterface::kIceGatheringNew:
+        iceGatheringState = PeerConnectionStates::IceGatheringState::New;
+        break;
+    case webrtc::PeerConnectionInterface::kIceGatheringGathering:
+        iceGatheringState = PeerConnectionStates::IceGatheringState::Gathering;
+        break;
+    case webrtc::PeerConnectionInterface::kIceGatheringComplete:
+        iceGatheringState = PeerConnectionStates::IceGatheringState::Complete;
+        break;
+    default:
+        return;
+    }
+    m_client->updateIceGatheringState(iceGatheringState);
+}
+
+void PeerConnectionBackendWebRtcOrg::OnSignalingChange(webrtc::PeerConnectionInterface::SignalingState state)
+{
+    ASSERT(m_client);
+    PeerConnectionStates::SignalingState signalingState = PeerConnectionStates::SignalingState::Stable;
+    switch (state) {
+    case webrtc::PeerConnectionInterface::kStable:
+        signalingState = PeerConnectionStates::SignalingState::Stable;
+        break;
+    case webrtc::PeerConnectionInterface::kHaveLocalOffer:
+        signalingState = PeerConnectionStates::SignalingState::HaveLocalOffer;
+        break;
+    case webrtc::PeerConnectionInterface::kHaveRemoteOffer:
+        signalingState = PeerConnectionStates::SignalingState::HaveRemoteOffer;
+        break;
+    case webrtc::PeerConnectionInterface::kHaveLocalPrAnswer:
+        signalingState = PeerConnectionStates::SignalingState::HaveLocalPrAnswer;
+        break;
+    case webrtc::PeerConnectionInterface::kHaveRemotePrAnswer:
+        signalingState = PeerConnectionStates::SignalingState::HaveRemotePrAnswer;
+        break;
+    case webrtc::PeerConnectionInterface::kClosed:
+        signalingState = PeerConnectionStates::SignalingState::Closed;
+        break;
+    default:
+        return;
+    }
+    m_client->setSignalingState(signalingState);
+}
+
+void PeerConnectionBackendWebRtcOrg::OnIceCandidate(const webrtc::IceCandidateInterface* iceCandidate)
+{
+    ASSERT(m_client);
+    std::string str;
+    if (!iceCandidate->ToString(&str)) {
+        LOG(Media, "Failed to get ICE candidate string");
+        return;
+    }
+
+    String sdp = str.c_str();
+    String sdpMid = iceCandidate->sdp_mid().c_str();
+    int sdpMLineIndex = iceCandidate->sdp_mline_index();
+    RefPtr<RTCIceCandidate> candidate = RTCIceCandidate::create(sdp, sdpMid, sdpMLineIndex);
+    m_client->scriptExecutionContext()->postTask([this, candidate](ScriptExecutionContext&) {
+        m_client->fireEvent(RTCIceCandidateEvent::create(false, false, candidate.copyRef()));
+    });
+}
+
+void PeerConnectionBackendWebRtcOrg::OnDataChannel(webrtc::DataChannelInterface* channel)
+{
+    std::unique_ptr<RTCDataChannelHandler> handler = std::make_unique<RTCDataChannelHandlerWebRtcOrg>(channel);
+    m_client->addRemoteDataChannel(WTFMove(handler));
+}
+
+void PeerConnectionBackendWebRtcOrg::requestSucceeded(int id, const RefPtr<RTCSessionDescription> desc)
 {
     ASSERT(id == m_sessionDescriptionRequestId);
     ASSERT(m_sessionDescriptionPromise);
 
-    // printf("%p:%s: %d, type=%s sdp=\n%s\n", this, __func__, id, desc.type.c_str(), desc.sdp.c_str());
-
-    String type = desc.type.c_str();
-    String sdp = desc.sdp.c_str();
+    String type = desc->type();
+    String sdp = desc->sdp();
 
     RefPtr<RTCSessionDescription> sessionDesc(RTCSessionDescription::create(type, sdp));
     m_sessionDescriptionPromise->resolve(sessionDesc);
 
-    m_sessionDescriptionRequestId = WRTCInt::InvalidRequestId;
+    m_sessionDescriptionRequestId = InvalidRequestId;
     m_sessionDescriptionPromise = WTF::Nullopt;
 }
-
-void PeerConnectionBackendWebRtcOrg::requestSucceeded(int id, const std::vector<std::unique_ptr<WRTCInt::RTCStatsReport>>& reports)
+void PeerConnectionBackendWebRtcOrg::requestSucceeded(int id, const webrtc::StatsReports& reports)
 {
     Optional<PeerConnection::StatsPromise> statsPromise = m_statsPromises.take(id);
     if (!statsPromise) {
-        printf("***Error: couldn't find promise for stats request: %d\n", id);
+        LOG(Media, "***Error: couldn't find promise for stats request: %d", id);
         return;
     }
 
     Ref<RTCStatsResponse> response = RTCStatsResponse::create();
-    for(auto& r : reports)
-    {
-        String id = r->id().c_str();
-        String type = r->type().c_str();
+    for (auto& r : reports) {
+        String id = r->id()->ToString().c_str();
+        String type = r->TypeToString();
         double timestamp = r->timestamp();
         size_t idx = response->addReport(id, type, timestamp);
-        for(auto& v : r->values())
-        {
-            response->addStatistic(idx, v.first.c_str(), v.second.c_str());
+        for (auto& v : r->values()) {
+            response->addStatistic(idx, r->FindValue(v.first)->display_name(), v.second.get()->ToString().c_str());
         }
     }
 
@@ -319,7 +630,7 @@ void PeerConnectionBackendWebRtcOrg::requestSucceeded(int id)
 
     m_voidPromise->resolve(nullptr);
 
-    m_voidRequestId = WRTCInt::InvalidRequestId;
+    m_voidRequestId = WebCore::InvalidRequestId;
     m_voidPromise = WTF::Nullopt;
 }
 
@@ -330,163 +641,22 @@ void PeerConnectionBackendWebRtcOrg::requestFailed(int id, const std::string& er
         ASSERT(!m_sessionDescriptionPromise);
         m_voidPromise->reject(DOMError::create(error.c_str()));
         m_voidPromise = WTF::Nullopt;
-        m_voidRequestId = WRTCInt::InvalidRequestId;
+        m_voidRequestId = WebCore::InvalidRequestId;
     } else if (id == m_sessionDescriptionRequestId) {
         ASSERT(m_sessionDescriptionPromise);
         ASSERT(!m_voidPromise);
         m_sessionDescriptionPromise->reject(DOMError::create(error.c_str()));
         m_sessionDescriptionPromise = WTF::Nullopt;
-        m_sessionDescriptionRequestId = WRTCInt::InvalidRequestId;
+        m_sessionDescriptionRequestId = WebCore::InvalidRequestId;
     } else {
         ASSERT_NOT_REACHED();
     }
 }
 
-void PeerConnectionBackendWebRtcOrg::negotiationNeeded()
-{
-    m_isNegotiationNeeded = true;
-    m_client->scheduleNegotiationNeededEvent();
-}
-
-void PeerConnectionBackendWebRtcOrg::didAddRemoteStream(
-    WRTCInt::RTCMediaStream *stream,
-    const std::vector<std::string> &audioDevices,
-    const std::vector<std::string> &videoDevices)
-{
-    ASSERT(m_client);
-
-    std::shared_ptr<WRTCInt::RTCMediaStream> rtcStream;
-    rtcStream.reset(stream);
-
-    Vector<RefPtr<RealtimeMediaSource>> audioSources;
-    Vector<RefPtr<RealtimeMediaSource>> videoSources;
-
-    for (auto& device : audioDevices) {
-        String name(device.c_str());
-        String id(createCanonicalUUIDString());
-        RefPtr<RealtimeMediaSourceWebRtcOrg> audioSource = adoptRef(new RealtimeAudioSourceWebRtcOrg(id, name));
-        audioSource->setRTCStream(rtcStream);
-        audioSources.append(audioSource.release());
-    }
-    for (auto& device : videoDevices) {
-        String name(device.c_str());
-        String id(createCanonicalUUIDString());
-        RefPtr<RealtimeMediaSourceWebRtcOrg> videoSource = adoptRef(new RealtimeVideoSourceWebRtcOrg(id, name));
-        videoSource->setRTCStream(rtcStream);
-        videoSources.append(videoSource.release());
-    }
-    String id = rtcStream->id().c_str();
-    RefPtr<MediaStreamPrivate> privateStream = MediaStreamPrivate::create(id, audioSources, videoSources);
-    RefPtr<MediaStream> mediaStream = MediaStream::create(*m_client->scriptExecutionContext(), privateStream.copyRef());
-    privateStream->startProducingData();
-    m_client->addRemoteStream(WTFMove(mediaStream));
-}
-
-void PeerConnectionBackendWebRtcOrg::didGenerateIceCandidate(const WRTCInt::RTCIceCandidate& iceCandidate)
-{
-    ASSERT(m_client);
-    String sdp = iceCandidate.sdp.c_str();
-    String sdpMid = iceCandidate.sdpMid.c_str();
-    Optional<unsigned short> sdpMLineIndex = iceCandidate.sdpMLineIndex;
-    RefPtr<RTCIceCandidate> candidate = RTCIceCandidate::create(sdp, sdpMid, sdpMLineIndex);
-    m_client->scriptExecutionContext()->postTask([this, candidate] (ScriptExecutionContext&) {
-        m_client->fireEvent(RTCIceCandidateEvent::create(false, false, candidate.copyRef()));
-    });
-}
-
-void PeerConnectionBackendWebRtcOrg::didChangeSignalingState(WRTCInt::SignalingState state)
-{
-    ASSERT(m_client);
-    PeerConnectionStates::SignalingState signalingState = PeerConnectionStates::SignalingState::Stable;
-    switch(state)
-    {
-        case WRTCInt::Stable:
-            signalingState = PeerConnectionStates::SignalingState::Stable;
-            break;
-        case WRTCInt::HaveLocalOffer:
-            signalingState = PeerConnectionStates::SignalingState::HaveLocalOffer;
-            break;
-        case WRTCInt::HaveRemoteOffer:
-            signalingState = PeerConnectionStates::SignalingState::HaveRemoteOffer;
-            break;
-        case WRTCInt::HaveLocalPrAnswer:
-            signalingState = PeerConnectionStates::SignalingState::HaveLocalPrAnswer;
-            break;
-        case WRTCInt::HaveRemotePrAnswer:
-            signalingState = PeerConnectionStates::SignalingState::HaveRemotePrAnswer;
-            break;
-        case WRTCInt::Closed:
-            signalingState = PeerConnectionStates::SignalingState::Closed;
-            break;
-        default:
-            return;
-    }
-    m_client->setSignalingState(signalingState);
-}
-
-void PeerConnectionBackendWebRtcOrg::didChangeIceGatheringState(WRTCInt::IceGatheringState state)
-{
-    ASSERT(m_client);
-    PeerConnectionStates::IceGatheringState iceGatheringState = PeerConnectionStates::IceGatheringState::New;
-    switch(state)
-    {
-        case WRTCInt::IceGatheringNew:
-            iceGatheringState = PeerConnectionStates::IceGatheringState::New;
-            break;
-        case WRTCInt::IceGatheringGathering:
-            iceGatheringState = PeerConnectionStates::IceGatheringState::Gathering;
-            break;
-        case WRTCInt::IceGatheringComplete:
-            iceGatheringState = PeerConnectionStates::IceGatheringState::Complete;
-            break;
-        default:
-            return;
-    }
-    m_client->updateIceGatheringState(iceGatheringState);
-}
-
-void PeerConnectionBackendWebRtcOrg::didChangeIceConnectionState(WRTCInt::IceConnectionState state)
-{
-    ASSERT(m_client);
-    PeerConnectionStates::IceConnectionState iceConnectionState = PeerConnectionStates::IceConnectionState::New;
-    switch(state)
-    {
-        case WRTCInt::IceConnectionNew:
-            iceConnectionState = PeerConnectionStates::IceConnectionState::New;
-            break;
-        case WRTCInt::IceConnectionChecking:
-            iceConnectionState = PeerConnectionStates::IceConnectionState::Checking;
-            break;
-        case WRTCInt::IceConnectionConnected:
-            iceConnectionState = PeerConnectionStates::IceConnectionState::Connected;
-            break;
-        case WRTCInt::IceConnectionCompleted:
-            iceConnectionState = PeerConnectionStates::IceConnectionState::Completed;
-            break;
-        case WRTCInt::IceConnectionFailed:
-            iceConnectionState = PeerConnectionStates::IceConnectionState::Failed;
-            break;
-        case WRTCInt::IceConnectionDisconnected:
-            iceConnectionState = PeerConnectionStates::IceConnectionState::Disconnected;
-            break;
-        case WRTCInt::IceConnectionClosed:
-            iceConnectionState = PeerConnectionStates::IceConnectionState::Closed;
-            break;
-        default:
-            return;
-    }
-    m_client->updateIceConnectionState(iceConnectionState);
-}
-
-void PeerConnectionBackendWebRtcOrg::didAddRemoteDataChannel(WRTCInt::RTCDataChannel* channel)
-{
-    std::unique_ptr<RTCDataChannelHandler> handler = std::make_unique<RTCDataChannelHandlerWebRtcOrg>(channel);
-    m_client->addRemoteDataChannel(WTFMove(handler));
-}
-
-RTCDataChannelHandlerWebRtcOrg::RTCDataChannelHandlerWebRtcOrg(WRTCInt::RTCDataChannel* dataChannel)
+RTCDataChannelHandlerWebRtcOrg::RTCDataChannelHandlerWebRtcOrg(webrtc::DataChannelInterface* dataChannel)
     : m_rtcDataChannel(dataChannel)
     , m_client(nullptr)
+    , m_observer(new rtc::RefCountedObject<RTCDataChannelObserver>(this))
 {
 }
 
@@ -497,8 +667,58 @@ void RTCDataChannelHandlerWebRtcOrg::setClient(RTCDataChannelHandlerClient* clie
 
     m_client = client;
 
-    if (m_client)
-        m_rtcDataChannel->setClient(this);
+    if (m_client != nullptr) {
+        m_rtcDataChannel->RegisterObserver(m_observer.get());
+    } else {
+        m_rtcDataChannel->UnregisterObserver();
+    }
+}
+
+void RTCDataChannelHandlerWebRtcOrg::onStateChange()
+{
+    ASSERT(m_client);
+    webrtc::DataChannelInterface::DataState state = m_rtcDataChannel->state();
+    LOG(Media, "DataChannel id=%d state=%s", m_rtcDataChannel->id(), webrtc::DataChannelInterface::DataStateString(state));
+
+    RTCDataChannelHandlerClient::ReadyState readyState = RTCDataChannelHandlerClient::ReadyStateConnecting;
+    switch (state) {
+    case DataChannelInterface::kConnecting:
+        readyState = RTCDataChannelHandlerClient::ReadyStateConnecting;
+        break;
+    case DataChannelInterface::kOpen:
+        readyState = RTCDataChannelHandlerClient::ReadyStateOpen;
+        break;
+    case DataChannelInterface::kClosing:
+        readyState = RTCDataChannelHandlerClient::ReadyStateClosing;
+        break;
+    case DataChannelInterface::kClosed:
+        readyState = RTCDataChannelHandlerClient::ReadyStateClosed;
+        break;
+    default:
+        break;
+    };
+    m_client->didChangeReadyState(readyState);
+}
+
+void RTCDataChannelHandlerWebRtcOrg::onMessage(const webrtc::DataBuffer& buffer)
+{
+    ASSERT(m_client);
+    const char* data = buffer.data.data<char>();
+    size_t sz = buffer.data.size();
+    if (buffer.binary) {
+        m_client->didReceiveRawData(data, sz);
+    } else {
+        m_client->didReceiveStringData(std::string(data, sz).c_str());
+    }
+}
+
+void RTCDataChannelHandlerWebRtcOrg::closeDataChannel()
+{
+    if (m_rtcDataChannel) {
+        m_rtcDataChannel->UnregisterObserver();
+        m_rtcDataChannel->Close();
+        m_rtcDataChannel = nullptr;
+    }
 }
 
 String RTCDataChannelHandlerWebRtcOrg::label()
@@ -538,44 +758,24 @@ unsigned short RTCDataChannelHandlerWebRtcOrg::id()
 
 unsigned long RTCDataChannelHandlerWebRtcOrg::bufferedAmount()
 {
-    return m_rtcDataChannel->bufferedAmount();
+    return m_rtcDataChannel->buffered_amount();
 }
 
 bool RTCDataChannelHandlerWebRtcOrg::sendStringData(const String& str)
 {
-    return m_rtcDataChannel->sendStringData(str.utf8().data());
+    rtc::CopyOnWriteBuffer buffer(str.utf8().data(), str.length());
+    return m_rtcDataChannel->Send(webrtc::DataBuffer(buffer, false));
 }
 
 bool RTCDataChannelHandlerWebRtcOrg::sendRawData(const char* data, size_t size)
 {
-    return m_rtcDataChannel->sendRawData(data, size);
+    rtc::CopyOnWriteBuffer buffer(data, size);
+    return m_rtcDataChannel->Send(webrtc::DataBuffer(buffer, true));
 }
 
 void RTCDataChannelHandlerWebRtcOrg::close()
 {
-    m_rtcDataChannel->close();
-}
-
-void RTCDataChannelHandlerWebRtcOrg::didChangeReadyState(WRTCInt::DataChannelState state)
-{
-    RTCDataChannelHandlerClient::ReadyState readyState = RTCDataChannelHandlerClient::ReadyStateConnecting;
-    switch(state) {
-        case WRTCInt::DataChannelConnecting:
-            readyState = RTCDataChannelHandlerClient::ReadyStateConnecting;
-            break;
-        case WRTCInt::DataChannelOpen:
-            readyState = RTCDataChannelHandlerClient::ReadyStateOpen;
-            break;
-        case WRTCInt::DataChannelClosing:
-            readyState = RTCDataChannelHandlerClient::ReadyStateClosing;
-            break;
-        case WRTCInt::DataChannelClosed:
-            readyState = RTCDataChannelHandlerClient::ReadyStateClosed;
-            break;
-        default:
-            break;
-    };
-    m_client->didChangeReadyState(readyState);
+    m_rtcDataChannel->Close();
 }
 
 void RTCDataChannelHandlerWebRtcOrg::didReceiveStringData(const std::string& str)
@@ -587,5 +787,4 @@ void RTCDataChannelHandlerWebRtcOrg::didReceiveRawData(const char* data, size_t 
 {
     m_client->didReceiveRawData(data, sz);
 }
-
 }

@@ -1,10 +1,12 @@
 #include "config.h"
+
+#include "Logging.h"
 #include "MediaPlayerPrivateWebRtcOrg.h"
 #include "RealtimeMediaSourceCenterWebRtcOrg.h"
 
 #include <wtf/HashSet.h>
-#include <wtf/text/WTFString.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/text/WTFString.h>
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 #include "TextureMapperGL.h"
@@ -18,34 +20,53 @@
 #include <cairo.h>
 
 #include "MediaPlayer.h"
+#include "MediaStreamPrivate.h"
 #include "NotImplemented.h"
 #include "TimeRanges.h"
-#include "MediaStreamPrivate.h"
+
+#include "webrtc/api/datachannelinterface.h"
+#include "webrtc/api/mediaconstraintsinterface.h"
+#include "webrtc/api/mediastreaminterface.h"
+#include "webrtc/api/peerconnectionfactory.h"
+
+#include "webrtc/base/common.h"
+#include "webrtc/base/nullsocketserver.h"
+#include "webrtc/base/refcount.h"
+#include "webrtc/base/scoped_ref_ptr.h"
+#include "webrtc/base/ssladapter.h"
+#include "webrtc/media/base/videosourceinterface.h"
+#include "webrtc/video_frame.h"
 
 namespace {
 
 class ConditionNotifier {
 public:
     ConditionNotifier(Lock& lock, Condition& condition)
-        : m_locker(lock), m_condition(condition)
+        : m_locker(lock)
+        , m_condition(condition)
     {
     }
     ~ConditionNotifier()
     {
         m_condition.notifyOne();
     }
+
 private:
     LockHolder m_locker;
     Condition& m_condition;
 };
 
-}  // namespace
+} // namespace
+
+using namespace rtc;
+using namespace cricket;
 
 namespace WebCore {
+//using namespace rtc;
 
 void MediaPlayerPrivateWebRtcOrg::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types)
 {
-    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> cache;
+    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash> > cache;
     types = cache;
 }
 
@@ -59,8 +80,8 @@ MediaPlayer::SupportsType MediaPlayerPrivateWebRtcOrg::supportsType(const MediaE
 void MediaPlayerPrivateWebRtcOrg::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateWebRtcOrg>(player); },
-            getSupportedTypes, supportsType, 0, 0, 0,
-              [](const String&, const String&) { return false; });
+        getSupportedTypes, supportsType, 0, 0, 0,
+        [](const String&, const String&) { return false; });
 }
 
 MediaPlayerPrivateWebRtcOrg::MediaPlayerPrivateWebRtcOrg(MediaPlayer* player)
@@ -134,55 +155,79 @@ void MediaPlayerPrivateWebRtcOrg::setVisible(bool visible)
 
 void MediaPlayerPrivateWebRtcOrg::updateVideoRectangle()
 {
-    if (m_rtcRenderer)
-        m_rtcRenderer->setVideoRectangle(m_position.x(), m_position.y(), m_size.width(), m_size.height());
 }
 
 void MediaPlayerPrivateWebRtcOrg::tryAttachRenderer()
 {
-    if (m_rtcRenderer)
-        return;
-
     if (!m_stream || !m_stream->isProducingData())
         return;
 
     if (m_paused || !m_player->visible())
         return;
 
-    MediaStreamTrackPrivate *videoTrack = m_stream->activeVideoTrack();
+    MediaStreamTrackPrivate* videoTrack = m_stream->activeVideoTrack();
     if (!videoTrack)
         return;
 
     RealtimeVideoSourceWebRtcOrg& videoSource = static_cast<RealtimeVideoSourceWebRtcOrg&>(videoTrack->source());
-    m_rtcRenderer.reset(getRTCMediaSourceCenter().createVideoRenderer(videoSource.rtcStream(), this));
+    webrtc::MediaStreamInterface* stream = videoSource.rtcStream();
+    ASSERT(stream != nullptr);
+    m_renderedTrack = stream->GetVideoTracks().at(0);
+    if (m_renderedTrack) {
+        m_renderedTrack->AddOrUpdateSink(this, rtc::VideoSinkWants());
+    } else {
+        LOG(Media, "Empty m_renderedTrack");
+    }
+
     videoSource.addObserver(this);
 
-    updateVideoRectangle();
+    //updateVideoRectangle();
+}
+
+void MediaPlayerPrivateWebRtcOrg::OnFrame(const cricket::VideoFrame& frame)
+{
+    if (frame.width() <= 0 || frame.height() <= 0) {
+        m_width = m_height = 0;
+        m_imageBuffer.reset();
+        return;
+    }
+    if (frame.width() != m_width || frame.height() != m_height) {
+        m_width = frame.width();
+        m_height = frame.height();
+        m_imageBuffer.reset(new uint8_t[m_width * m_width * 4]);
+    }
+    size_t size = m_width * m_width * 4;
+    size_t converted_size = frame.ConvertToRgbBuffer(
+        cricket::FOURCC_ARGB, m_imageBuffer.get(), size, m_width * 4);
+    if (converted_size != 0 && size >= converted_size) {
+        renderFrame();
+    } else {
+        LOG(Media, "Failed to convert to RGB buffer");
+    }
 }
 
 void MediaPlayerPrivateWebRtcOrg::removeRenderer()
 {
-    if (!m_rtcRenderer)
-        return;
-
-    m_rtcRenderer.reset();
-
-    MediaStreamTrackPrivate *videoTrack = m_stream ? m_stream->activeVideoTrack() : nullptr;
+    MediaStreamTrackPrivate* videoTrack = m_stream ? m_stream->activeVideoTrack() : nullptr;
     if (videoTrack) {
         RealtimeVideoSourceWebRtcOrg& videoSource = static_cast<RealtimeVideoSourceWebRtcOrg&>(videoTrack->source());
         videoSource.removeObserver(this);
     }
+    if (m_renderedTrack) {
+        m_renderedTrack->RemoveSink(this);
+        m_renderedTrack = nullptr;
+    }
 }
 
-void MediaPlayerPrivateWebRtcOrg::renderFrame(const unsigned char *data, int byteCount, int width, int height)
+void MediaPlayerPrivateWebRtcOrg::renderFrame()
 {
 #if USE(COORDINATED_GRAPHICS_THREADED)
     cairo_format_t cairoFormat = CAIRO_FORMAT_ARGB32;
-    int stride = cairo_format_stride_for_width (cairoFormat, width);
-    ASSERT(byteCount >= (height * stride));
+    int stride = cairo_format_stride_for_width(cairoFormat, m_width);
+
     RefPtr<cairo_surface_t> surface = adoptRef(
         cairo_image_surface_create_for_data(
-            (unsigned char*)data, cairoFormat, width, height, stride));
+            (unsigned char*)m_imageBuffer.get(), cairoFormat, m_width, m_height, stride));
     ASSERT(cairo_surface_status(surface.get()) == CAIRO_STATUS_SUCCESS);
     RefPtr<BitmapImage> frame = BitmapImage::create(WTFMove(surface));
     LockHolder lock(m_drawMutex);
@@ -193,7 +238,7 @@ void MediaPlayerPrivateWebRtcOrg::renderFrame(const unsigned char *data, int byt
     if (succeeded) {
         m_drawCondition.wait(m_drawMutex);
     } else {
-        printf("***Error: scheduleUpdateOnCompositorThread failed\n");
+        LOG(Media, "***Error: scheduleUpdateOnCompositorThread failed");
     }
 #endif
 }
@@ -211,7 +256,7 @@ void MediaPlayerPrivateWebRtcOrg::punchHole(int width, int height)
     if (succeeded) {
         m_drawCondition.wait(m_drawMutex);
     } else {
-        printf("***Error: scheduleUpdateOnCompositorThread failed\n");
+        LOG(Media, "***Error: scheduleUpdateOnCompositorThread failed");
     }
 #endif
 }
@@ -221,12 +266,11 @@ void MediaPlayerPrivateWebRtcOrg::pushTextureToCompositor(RefPtr<Image> frame)
 {
     LockHolder holder(m_platformLayerProxy->lock());
     if (!m_platformLayerProxy->isActive()) {
-        printf("***Error: platformLayerProxy is not ready yet\n");
+        LOG(Media, "***Error: platformLayerProxy is not ready yet");
         return;
     }
     IntSize size(frame->width(), frame->height());
-    std::unique_ptr<TextureMapperPlatformLayerBuffer> buffer =
-        m_platformLayerProxy->getAvailableBuffer(size, GraphicsContext3D::DONT_CARE);
+    std::unique_ptr<TextureMapperPlatformLayerBuffer> buffer = m_platformLayerProxy->getAvailableBuffer(size, GraphicsContext3D::DONT_CARE);
     if (UNLIKELY(!buffer)) {
         if (UNLIKELY(!m_context3D))
             m_context3D = GraphicsContext3D::create(
@@ -235,7 +279,7 @@ void MediaPlayerPrivateWebRtcOrg::pushTextureToCompositor(RefPtr<Image> frame)
         texture->reset(size, BitmapTexture::SupportsAlpha);
         buffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTFMove(texture));
     }
-    IntRect rect(IntPoint(),size);
+    IntRect rect(IntPoint(), size);
     buffer->textureGL().updateContents(
         frame.get(), rect, /*offset*/ IntPoint(),
         BitmapTexture::UpdateContentsFlag::UpdateCanModifyOriginalImageData);
@@ -257,5 +301,4 @@ void MediaPlayerPrivateWebRtcOrg::sourceSettingsChanged()
 {
     // Ignored
 }
-
 }

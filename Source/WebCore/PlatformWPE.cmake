@@ -282,7 +282,7 @@ if (USE_WEBRTCORG)
         platform/mediastream/webrtcorg/MediaPlayerPrivateWebRtcOrg.cpp
         platform/mediastream/webrtcorg/PeerConnectionBackendWebRtcOrg.cpp
         platform/mediastream/webrtcorg/RealtimeMediaSourceCenterWebRtcOrg.cpp
-        platform/mediastream/webrtcorg/wrtcint.cpp
+        platform/mediastream/webrtcorg/WebRtcOrgUtils.cpp
         platform/mediastream/SDPProcessorScriptResource.cpp
     )
 
