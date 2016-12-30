@@ -46,6 +46,11 @@ Extensions3DCache::Extensions3DCache()
 {
     GLContext* previousActiveContext = GLContext::getCurrent();
 
+    if (!previousActiveContext && !GLContext::sharingContext()) {
+        m_GL_EXT_unpack_subimage = false;
+        return;
+    }
+
     if (!previousActiveContext)
         GLContext::sharingContext()->makeContextCurrent();
 

@@ -250,7 +250,7 @@ struct wpe_renderer_backend_egl_interface westeros_renderer_backend_egl_interfac
     [](void* data) -> EGLNativeDisplayType
     {
         auto& backend = *static_cast<Westeros::Backend*>(data);
-        return backend.display();
+        return (EGLNativeDisplayType) backend.display();
     },
 };
 
