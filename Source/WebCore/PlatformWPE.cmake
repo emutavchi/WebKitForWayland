@@ -271,4 +271,19 @@ if (ENABLE_SUBTLE_CRYPTO)
     )
 endif ()
 
+if (USE_WEBRTCORG)
+    list(APPEND WebCore_SOURCES
+        platform/mediastream/webrtcorg/MediaPlayerPrivateWebRtcOrg.cpp
+        platform/mediastream/webrtcorg/PeerConnectionBackendWebRtcOrg.cpp
+        platform/mediastream/webrtcorg/RealtimeMediaSourceCenterWebRtcOrg.cpp
+        platform/mediastream/webrtcorg/WebRtcOrgUtils.cpp
+        platform/mediastream/SDPProcessorScriptResource.cpp
+    )
 
+    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+        ${WEBRTCORG_INCLUDE_DIRS}
+        platform/mediastream/webrtcorg/
+    )
+
+    add_definitions(${WEBRTCORG_CFLAGS_OTHER})
+endif ()

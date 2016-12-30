@@ -93,6 +93,11 @@
 #if USE(HOLE_PUNCH_EXTERNAL)
 #include "MediaPlayerPrivateHolePunchDummy.h"
 #endif
+
+#if ENABLE(MEDIA_STREAM)
+#include "MediaPlayerPrivateWebRtcOrg.h"
+#endif
+
 namespace WebCore {
 
 const PlatformMedia NoPlatformMedia = { PlatformMedia::None, {0} };
@@ -231,6 +236,10 @@ static void buildMediaEnginesVector()
 #if PLATFORM(MAC) && USE(QTKIT)
     if (Settings::isQTKitEnabled())
         MediaPlayerPrivateQTKit::registerMediaEngine(addMediaEngine);
+#endif
+
+#if ENABLE(MEDIA_STREAM)
+    MediaPlayerPrivateWebRtcOrg::registerMediaEngine(addMediaEngine);
 #endif
 
 #if USE(HOLE_PUNCH_EXTERNAL)

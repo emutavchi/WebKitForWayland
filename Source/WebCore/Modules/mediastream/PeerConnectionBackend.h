@@ -35,6 +35,7 @@
 
 #include "JSDOMPromise.h"
 #include "PeerConnectionStates.h"
+#include "Dictionary.h"
 
 namespace WebCore {
 
@@ -45,6 +46,7 @@ class MediaStreamTrack;
 class PeerConnectionBackend;
 class RTCAnswerOptions;
 class RTCConfiguration;
+class RTCDataChannelHandler;
 class RTCIceCandidate;
 class RTCOfferOptions;
 class RTCRtpReceiver;
@@ -108,6 +110,7 @@ public:
     virtual void getStats(MediaStreamTrack*, PeerConnection::StatsPromise&&) = 0;
 
     virtual Vector<RefPtr<MediaStream>> getRemoteStreams() const = 0;
+    virtual std::unique_ptr<RTCDataChannelHandler> createDataChannel(const String&, const Dictionary&) = 0;
 
     virtual RefPtr<RTCRtpReceiver> createReceiver(const String& transceiverMid, const String& trackKind, const String& trackId) = 0;
     virtual void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, PeerConnection::VoidPromise&&) = 0;

@@ -93,10 +93,10 @@ static RefPtr<RTCIceServer> parseIceServer(const Dictionary& iceServer, Exceptio
 
 RefPtr<RTCConfiguration> RTCConfiguration::create(const Dictionary& configuration, ExceptionCode& ec)
 {
-    if (configuration.isUndefinedOrNull())
-        return nullptr;
-
     RefPtr<RTCConfiguration> rtcConfiguration = adoptRef(new RTCConfiguration());
+    if (configuration.isUndefinedOrNull())
+        return rtcConfiguration;
+
     rtcConfiguration->initialize(configuration, ec);
     if (ec)
         return nullptr;
@@ -113,14 +113,18 @@ void RTCConfiguration::initialize(const Dictionary& configuration, ExceptionCode
     ArrayValue iceServers;
     bool ok = configuration.get("iceServers", iceServers);
     if (!ok || iceServers.isUndefinedOrNull()) {
+#if !USE(USE_WEBRTCORG)
         ec = TYPE_MISMATCH_ERR;
+#endif
         return;
     }
 
     size_t numberOfServers;
     ok = iceServers.length(numberOfServers);
     if (!ok || !numberOfServers) {
+#if !USE(USE_WEBRTCORG)
         ec = !ok ? TYPE_MISMATCH_ERR : INVALID_ACCESS_ERR;
+#endif
         return;
     }
 

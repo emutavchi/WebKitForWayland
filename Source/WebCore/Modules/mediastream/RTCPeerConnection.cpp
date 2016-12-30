@@ -45,6 +45,7 @@
 #include "MediaStreamTrack.h"
 #include "RTCConfiguration.h"
 #include "RTCDataChannel.h"
+#include "RTCDataChannelHandler.h"
 #include "RTCIceCandidate.h"
 #include "RTCIceCandidateEvent.h"
 #include "RTCOfferAnswerOptions.h"
@@ -381,10 +382,12 @@ RTCConfiguration* RTCPeerConnection::getConfiguration() const
 
 void RTCPeerConnection::setConfiguration(const Dictionary& configuration, ExceptionCode& ec)
 {
+#if !USE(USE_WEBRTCORG)
     if (configuration.isUndefinedOrNull()) {
         ec = TypeError;
         return;
     }
+#endif
 
     if (m_signalingState == SignalingState::Closed) {
         ec = INVALID_STATE_ERR;
@@ -404,14 +407,23 @@ void RTCPeerConnection::privateGetStats(MediaStreamTrack* selector, PeerConnecti
     m_backend->getStats(selector, WTFMove(promise));
 }
 
-RefPtr<RTCDataChannel> RTCPeerConnection::createDataChannel(String, const Dictionary&, ExceptionCode& ec)
+RefPtr<RTCDataChannel> RTCPeerConnection::createDataChannel(String label, const Dictionary& options, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingState::Closed) {
         ec = INVALID_STATE_ERR;
         return nullptr;
     }
 
-    return nullptr;
+    std::unique_ptr<RTCDataChannelHandler> handler = m_backend->createDataChannel(label, options);
+    if (!handler)
+        return nullptr;
+
+    RefPtr<RTCDataChannel> channel = RTCDataChannel::create(scriptExecutionContext(), WTFMove(handler));
+    if (!channel)
+        return nullptr;
+
+    m_dataChannels.append(channel);
+    return channel.release();
 }
 
 void RTCPeerConnection::close()

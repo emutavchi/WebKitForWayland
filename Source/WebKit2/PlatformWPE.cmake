@@ -295,6 +295,13 @@ if (ENABLE_BREAKPAD)
     )
 endif ()
 
+if (USE_WEBRTCORG)
+  list(APPEND WebKit2_LIBRARIES
+    ${WEBRTCORG_LDFLAGS}
+  )
+  link_directories(${WEBRTCORG_LIBRARY_DIRS})
+endif ()
+
 set(InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/*.html
