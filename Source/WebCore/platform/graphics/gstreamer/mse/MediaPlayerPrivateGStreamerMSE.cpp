@@ -507,8 +507,7 @@ void MediaPlayerPrivateGStreamerMSE::setRate(float)
 
 std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateGStreamerMSE::buffered() const
 {
-    RELEASE_ASSERT(m_mediaSource.get() != nullptr);
-    return m_mediaSource->buffered();
+    return m_mediaSource ? m_mediaSource->buffered() : std::make_unique<PlatformTimeRanges>();
 }
 
 void MediaPlayerPrivateGStreamerMSE::sourceChanged()
