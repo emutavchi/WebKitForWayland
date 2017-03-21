@@ -180,7 +180,7 @@ struct wpe_renderer_backend_egl_interface wayland_egl_renderer_backend_egl_inter
     [](void* data) -> EGLNativeDisplayType
     {
         auto& backend = *static_cast<WaylandEGL::Backend*>(data);
-        return backend.display.display();
+        return (EGLNativeDisplayType)backend.display.display();
     },
 };
 
@@ -207,7 +207,7 @@ struct wpe_renderer_backend_egl_target_interface wayland_egl_renderer_backend_eg
     [](void* data) -> EGLNativeWindowType
     {
         auto& target = *static_cast<WaylandEGL::EGLTarget*>(data);
-        return target.m_window;
+        return (EGLNativeWindowType)target.m_window;
     },
     // resize
     [](void* data, uint32_t width, uint32_t height)
@@ -232,6 +232,9 @@ struct wpe_renderer_backend_egl_target_interface wayland_egl_renderer_backend_eg
     },
 };
 
+struct wl_surface* s_surface = 0;
+struct wl_egl_window* s_window = 0;
+
 struct wpe_renderer_backend_egl_offscreen_target_interface wayland_egl_renderer_backend_egl_offscreen_target_interface = {
     // create
     []() -> void*
@@ -245,11 +248,18 @@ struct wpe_renderer_backend_egl_offscreen_target_interface wayland_egl_renderer_
     // initialize
     [](void* data, void* backend_data)
     {
+        auto& target = *static_cast<WaylandEGL::EGLTarget*>(data);
+        auto& backend = *static_cast<WaylandEGL::Backend*>(backend_data);
+        if (s_surface == 0) {
+            s_surface = wl_compositor_create_surface(backend.display.interfaces().compositor);
+            if (s_surface)
+                s_window = wl_egl_window_create(s_surface, 1, 1);
+        }
     },
     // get_native_window
     [](void* data) -> EGLNativeWindowType
     {
-        return nullptr;
+        return (EGLNativeWindowType)s_window;
     },
 };
 

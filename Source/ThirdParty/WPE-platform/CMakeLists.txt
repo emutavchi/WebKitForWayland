@@ -1,4 +1,6 @@
 set(WPE_PLATFORM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE-platform")
+# set(USE_WPE_BACKEND_WAYLAND_EGL ON)
+set(USE_WPE_BACKEND_WESTEROS ON)
 
 # Converted
 option(USE_WPE_BACKEND_BCM_NEXUS "Whether to enable support for the BCM_NEXUS WPE backend" OFF)

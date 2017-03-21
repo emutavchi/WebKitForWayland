@@ -311,6 +311,9 @@ struct wpe_renderer_backend_egl_target_interface westeros_renderer_backend_egl_t
     },
 };
 
+struct wl_surface* s_surface = 0;
+struct wl_egl_window* s_window = 0;
+
 struct wpe_renderer_backend_egl_offscreen_target_interface westeros_renderer_backend_egl_offscreen_target_interface = {
     // create
     []() -> void*
@@ -324,11 +327,18 @@ struct wpe_renderer_backend_egl_offscreen_target_interface westeros_renderer_bac
     // initialize
     [](void* data, void* backend_data)
     {
+        auto& target = *static_cast<Westeros::EGLTarget*>(data);
+        const auto& backend = *static_cast<Westeros::Backend*>(backend_data);
+        if (s_surface == 0) {
+            s_surface = wl_compositor_create_surface(backend.compositor());
+            if (s_surface)
+                s_window = wl_egl_window_create(s_surface, 1, 1);
+        }
     },
     // get_native_window
     [](void* data) -> EGLNativeWindowType
     {
-        return (EGLNativeWindowType)nullptr;
+        return (EGLNativeWindowType)s_window;
     },
 };
 

@@ -41,7 +41,7 @@ namespace WKWPE {
 
 View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseConfiguration)
     : m_pageClient(std::make_unique<PageClientImpl>(*this))
-    , m_size{ 800, 600 }
+    , m_size{ 1280, 720 }
     , m_viewStateFlags(WebCore::ViewState::WindowIsActive | WebCore::ViewState::IsFocused | WebCore::ViewState::IsVisible | WebCore::ViewState::IsInWindow)
     , m_compositingManagerProxy(*this)
 {
