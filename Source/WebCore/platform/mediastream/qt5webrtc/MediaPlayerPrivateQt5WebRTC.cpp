@@ -1,3 +1,28 @@
+/*
+* Copyright (c) 2016, Comcast
+* All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without modification,
+* are permitted provided that the following conditions are met:
+*
+*  * Redistributions of source code must retain the above copyright notice,
+*    this list of conditions and the following disclaimer.
+*  * Redistributions in binary form must reproduce the above copyright notice,
+*    this list of conditions and the following disclaimer in the documentation
+*    and/or other materials provided with the distribution.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+* ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+* WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+* ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+* LOSS OF USE, DATA, OR OR; PROFITS BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+* ANY OF THEORY LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #include "config.h"
 #include "MediaPlayerPrivateQt5WebRTC.h"
 #include "RealtimeMediaSourceCenterQt5WebRTC.h"
@@ -21,25 +46,6 @@
 #include "NotImplemented.h"
 #include "TimeRanges.h"
 #include "MediaStreamPrivate.h"
-
-namespace {
-
-class ConditionNotifier {
-public:
-    ConditionNotifier(Lock& lock, Condition& condition)
-        : m_locker(lock), m_condition(condition)
-    {
-    }
-    ~ConditionNotifier()
-    {
-        m_condition.notifyOne();
-    }
-private:
-    LockHolder m_locker;
-    Condition& m_condition;
-};
-
-}  // namespace
 
 namespace WebCore {
 
@@ -197,8 +203,9 @@ void MediaPlayerPrivateQt5WebRTC::renderFrame(const unsigned char *data, int byt
     RefPtr<BitmapImage> frame = BitmapImage::create(WTFMove(surface));
     LockHolder lock(m_drawMutex);
     bool succeeded = m_platformLayerProxy->scheduleUpdateOnCompositorThread([this, frame] {
-        ConditionNotifier notifier(m_drawMutex, m_drawCondition);
+        LockHolder condLock(m_drawMutex);
         pushTextureToCompositor(frame);
+        m_drawCondition.notifyOne();
     });
     if (succeeded) {
         m_drawCondition.wait(m_drawMutex);
@@ -213,11 +220,12 @@ void MediaPlayerPrivateQt5WebRTC::punchHole(int width, int height)
 #if USE(COORDINATED_GRAPHICS_THREADED)
     LockHolder lock(m_drawMutex);
     bool succeeded = m_platformLayerProxy->scheduleUpdateOnCompositorThread([this, width, height] {
-        ConditionNotifier notifier(m_drawMutex, m_drawCondition);
+        LockHolder condLock(m_drawMutex);
         LockHolder holder(m_platformLayerProxy->lock());
         m_platformLayerProxy->pushNextBuffer(
             std::make_unique<TextureMapperPlatformLayerBuffer>(
                 0, IntSize(width, height), TextureMapperGL::ShouldOverwriteRect, GraphicsContext3D::DONT_CARE));
+        m_drawCondition.notifyOne();
     });
     if (succeeded) {
         m_drawCondition.wait(m_drawMutex);
