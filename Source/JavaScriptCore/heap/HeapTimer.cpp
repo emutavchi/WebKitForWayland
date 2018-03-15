@@ -221,12 +221,17 @@ void HeapTimer::timerDidFire()
 
 void HeapTimer::scheduleTimer(double intervalInSeconds)
 {
+    if (!intervalInSeconds) {
+        m_isScheduled = true;
+        g_source_set_ready_time(m_timer.get(), 0);
+        return;
+    }
     auto delayDuration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(intervalInSeconds));
     gint64 currentTime = g_get_monotonic_time();
     gint64 targetTime = currentTime + std::min<gint64>(G_MAXINT64 - currentTime, delayDuration.count());
     ASSERT(targetTime >= currentTime);
-    g_source_set_ready_time(m_timer.get(), targetTime);
     m_isScheduled = true;
+    g_source_set_ready_time(m_timer.get(), targetTime);
 }
 
 void HeapTimer::cancelTimer()
