@@ -32,6 +32,7 @@
 #if OS(WINDOWS)
 #include <windows.h>
 #elif defined(USE_SYSTEM_MALLOC) && USE_SYSTEM_MALLOC
+#include <wtf/text/WTFString.h>
 #if OS(UNIX)
 #include <sys/sysinfo.h>
 #endif // OS(UNIX)

@@ -26,6 +26,7 @@ set(WebKitGLibAPITest_LIBRARIES
     WebKitGLibAPITestsCore
     ${GLIB_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
+    ${CAIRO_LIBRARIES}
 )
 
 set(WebKitGLibAPITestExtension_LIBRARIES

@@ -123,8 +123,6 @@ list(APPEND WebCore_SOURCES
 
     platform/text/Hyphenation.cpp
     platform/text/LocaleICU.cpp
-    platform/text/TextCodecICU.cpp
-    platform/text/TextEncodingDetectorICU.cpp
 
     platform/unix/LoggingUnix.cpp
 

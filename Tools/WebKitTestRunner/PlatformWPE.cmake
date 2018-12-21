@@ -34,7 +34,14 @@ list(APPEND WebKitTestRunner_LIBRARIES
     ${LIBGBM_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
     ${WPE_MESA_LIBRARIES}
+    ${WPE_LIBRARIES}
 )
+
+if (USE_LIBEPOXY)
+    list(APPEND WebKitTestRunner_LIBRARIES
+        ${LIBEPOXY_LIBRARIES}
+    )
+endif()
 
 list(APPEND WebKitTestRunnerInjectedBundle_SOURCES
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/wpe/AccessibilityControllerWPE.cpp

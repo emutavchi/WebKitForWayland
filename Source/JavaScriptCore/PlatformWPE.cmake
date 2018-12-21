@@ -1,5 +1,16 @@
+set(JavaScriptCore_OUTPUT_NAME WPEJavaScriptCore)
+
+if ("${JavaScriptCore_LIBRARY_TYPE}" MATCHES "SHARED")
+   add_definitions(-DSTATICALLY_LINKED_WITH_WTF)
+   configure_file(wpe-javascriptcore.pc.in ${CMAKE_BINARY_DIR}/Source/JavaScriptCore/wpe-javascriptcore.pc @ONLY)
+   install(FILES "${CMAKE_BINARY_DIR}/Source/JavaScriptCore/wpe-javascriptcore.pc"
+        DESTINATION "${LIB_INSTALL_DIR}/pkgconfig"
+   )
+endif()
+
 list(APPEND JavaScriptCore_LIBRARIES
     ${GLIB_LIBRARIES}
+    ${GLIB_GMODULE_LIBRARIES}
 )
 list(APPEND JavaScriptCore_INCLUDE_DIRECTORIES
     ${GLIB_INCLUDE_DIRS}

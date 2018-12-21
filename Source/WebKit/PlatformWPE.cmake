@@ -7,6 +7,11 @@ file(MAKE_DIRECTORY ${DERIVED_SOURCES_WPE_API_DIR})
 file(MAKE_DIRECTORY ${FORWARDING_HEADERS_WPE_DIR})
 file(MAKE_DIRECTORY ${FORWARDING_HEADERS_WPE_EXTENSION_DIR})
 
+if ("${JavaScriptCore_LIBRARY_TYPE}" MATCHES "SHARED")
+    set(WPE_PC_DEPENDENICES "wpe-javascriptcore")
+else()
+    set(WPE_PC_DEPENDENICES "")
+endif()
 configure_file(wpe/wpe-webkit.pc.in ${CMAKE_BINARY_DIR}/wpe-webkit.pc @ONLY)
 
 add_definitions(-DWEBKIT2_COMPILATION)
@@ -398,10 +403,21 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${FORWARDING_HEADERS_WPE_EXTENSION_DIR}"
     "${DERIVED_SOURCES_DIR}"
     "${DERIVED_SOURCES_WPE_API_DIR}"
+    "${DERIVED_SOURCES_WEBCORE_DIR}"
+    "${BMALLOC_DIR}"
+    "${JAVASCRIPTCORE_DIR}/API"
+    "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
+    "${JAVASCRIPTCORE_DIR}/heap"
+    "${JAVASCRIPTCORE_DIR}/runtime"
+    "${WEBCORE_DIR}/Modules/fetch"
+    "${WEBCORE_DIR}/dom"
+    "${WEBCORE_DIR}/loader"
+    "${WEBCORE_DIR}/platform"
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/graphics/freetype"
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
+    "${WEBCORE_DIR}/platform/network"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBKIT_DIR}/NetworkProcess/CustomProtocols/soup"
     "${WEBKIT_DIR}/NetworkProcess/Downloads/soup"
@@ -447,6 +463,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     ${GSTREAMER_INCLUDE_DIRS}
     ${HARFBUZZ_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
+    ${LIBGCRYPT_INCLUDE_DIRS}
     ${WPE_INCLUDE_DIRS}
 )
 
@@ -704,3 +721,11 @@ if (EXPORT_DEPRECATED_WEBKIT2_C_API)
         COMPONENT "Development"
     )
 endif ()
+
+list(APPEND WebProcess_LIBRARIES
+    ${LIBGCRYPT_LIBRARIES}
+)
+
+list(APPEND NetworkProcess_LIBRARIES
+    ${LIBGCRYPT_LIBRARIES}
+)

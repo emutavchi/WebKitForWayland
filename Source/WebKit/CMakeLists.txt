@@ -87,6 +87,10 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_WEBKIT_DIR}"
     "${DERIVED_SOURCES_WEBKIT_DIR}/include"
     "${CMAKE_SOURCE_DIR}/WebKitLibraries"
+    "${CMAKE_SOURCE_DIR}/Source"
+    "${CMAKE_BINARY_DIR}"
+    "${PAL_DIR}"
+    "${JAVASCRIPTCORE_DIR}"
 )
 
 set(PROTOCOL_GENERATOR_SCRIPTS_DIR "${JAVASCRIPTCORE_DIR}/inspector/scripts")
@@ -914,6 +918,8 @@ endif ()
 if (WebKit_VERSION_SCRIPT)
     WEBKIT_ADD_TARGET_PROPERTIES(WebKit LINK_FLAGS "${WebKit_VERSION_SCRIPT}")
 endif ()
+
+set_target_properties(WebKit PROPERTIES INTERFACE_LINK_LIBRARIES "")
 
 add_executable(WebProcess ${WebProcess_SOURCES})
 ADD_WEBKIT_PREFIX_HEADER(WebProcess)

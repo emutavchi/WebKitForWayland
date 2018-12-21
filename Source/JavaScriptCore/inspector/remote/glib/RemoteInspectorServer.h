@@ -42,7 +42,7 @@ typedef struct _GVariant GVariant;
 
 namespace Inspector {
 
-class RemoteInspectorServer {
+class JS_EXPORT_PRIVATE RemoteInspectorServer {
 public:
     static RemoteInspectorServer& singleton();
     ~RemoteInspectorServer();
