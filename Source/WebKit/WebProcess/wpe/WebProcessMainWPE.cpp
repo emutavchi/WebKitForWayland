@@ -42,10 +42,10 @@ class WebProcessMain final: public ChildProcessMainBase {
 public:
     bool platformInitialize() override
     {
-#if ENABLE(DEVELOPER_MODE)
+// #if ENABLE(DEVELOPER_MODE)
         if (g_getenv("WEBKIT2_PAUSE_WEB_PROCESS_ON_LAUNCH"))
             WTF::sleep(30);
-#endif
+// #endif
 
         return true;
     }

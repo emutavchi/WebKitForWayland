@@ -495,6 +495,10 @@ bool CachedResourceLoader::canRequest(CachedResource::Type type, const URL& url,
     if (!checkInsecureContent(type, url))
         return false;
 
+    static bool disableImages = !!getenv("WPE_DISABLE_IMAGE");
+    if (disableImages && CachedResource::ImageResource == type)
+        return false;
+
     return true;
 }
 

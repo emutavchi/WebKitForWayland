@@ -172,6 +172,7 @@ template <MatchType type> int getScaledValue(const Vector<int>& scaledValues, in
 
 bool ScalableImageDecoder::frameIsCompleteAtIndex(size_t index) const
 {
+    LockHolder lockHolder(m_mutex);
     if (index >= m_frameBufferCache.size())
         return false;
 
@@ -180,6 +181,7 @@ bool ScalableImageDecoder::frameIsCompleteAtIndex(size_t index) const
 
 bool ScalableImageDecoder::frameHasAlphaAtIndex(size_t index) const
 {
+    LockHolder lockHolder(m_mutex);
     if (m_frameBufferCache.size() <= index)
         return true;
     if (m_frameBufferCache[index].isComplete())
@@ -189,6 +191,7 @@ bool ScalableImageDecoder::frameHasAlphaAtIndex(size_t index) const
 
 unsigned ScalableImageDecoder::frameBytesAtIndex(size_t index, SubsamplingLevel) const
 {
+    LockHolder lockHolder(m_mutex);
     if (m_frameBufferCache.size() <= index)
         return 0;
     // FIXME: Use the dimension of the requested frame.
@@ -197,6 +200,7 @@ unsigned ScalableImageDecoder::frameBytesAtIndex(size_t index, SubsamplingLevel)
 
 Seconds ScalableImageDecoder::frameDurationAtIndex(size_t index) const
 {
+    LockHolder lockHolder(m_mutex);
     if (index >= m_frameBufferCache.size())
         return 0_s;
 
@@ -219,6 +223,7 @@ Seconds ScalableImageDecoder::frameDurationAtIndex(size_t index) const
 
 NativeImagePtr ScalableImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLevel, const DecodingOptions&)
 {
+    LockHolder lockHolder(m_mutex);
     // Zero-height images can cause problems for some ports. If we have an empty image dimension, just bail.
     if (size().isEmpty())
         return nullptr;

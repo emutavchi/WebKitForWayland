@@ -149,7 +149,7 @@ void NetworkStorageSession::setCookieObserverHandler(Function<void ()>&& handler
 void NetworkStorageSession::setCookiesLimit(uint64_t limit)
 {
     m_cookiesLimit = limit;
-    soup_cookie_jar_set_limit(m_cookieStorage.get(), m_cookiesLimit);
+//    soup_cookie_jar_set_limit(m_cookieStorage.get(), m_cookiesLimit);
 }
 
 #if USE(LIBSECRET)
