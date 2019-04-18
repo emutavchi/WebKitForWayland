@@ -1172,6 +1172,8 @@ void MediaPlayerPrivateGStreamerMSE::unmarkEndOfStream()
 {
     GST_DEBUG("Unmarking end of stream");
     m_eosPending = false;
+    m_eosMarked = false;
+    m_isEndReached = false;
 }
 
 MediaTime MediaPlayerPrivateGStreamerMSE::currentMediaTime() const
