@@ -768,4 +768,4 @@ nonCompositedWebGLEnabled:
   initial: false
 localStorageQuota:
   type: unsigned
-  initial: 5*1024*1024
+  initial: 100*1024

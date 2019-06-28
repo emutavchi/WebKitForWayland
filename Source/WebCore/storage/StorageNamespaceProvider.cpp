@@ -36,7 +36,7 @@
 namespace WebCore {
 
 // Suggested by the HTML5 spec.
-unsigned localStorageDatabaseQuotaInBytes = 5 * 1024 * 1024;
+unsigned localStorageDatabaseQuotaInBytes = 100 * 1024;
 
 StorageNamespaceProvider::StorageNamespaceProvider()
 {
@@ -84,6 +84,7 @@ RefPtr<StorageArea> StorageNamespaceProvider::localStorageArea(Document& documen
 
 StorageNamespace& StorageNamespaceProvider::localStorageNamespace(unsigned quota)
 {
+    quota = std::min(localStorageDatabaseQuotaInBytes, quota);
     if (!m_localStorageNamespace)
         m_localStorageNamespace = createLocalStorageNamespace(quota);
 
