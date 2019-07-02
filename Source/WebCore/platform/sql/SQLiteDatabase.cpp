@@ -159,6 +159,19 @@ void SQLiteDatabase::overrideUnauthorizedFunctions()
         sqlite3_create_function(m_db, functionParameter.first, functionParameter.second, SQLITE_UTF8, const_cast<char*>(functionParameter.first), unauthorizedSQLFunction, 0, 0);
 }
 
+int SQLiteDatabase::autoVacuum()
+{
+    int vacuumMode = -1;
+    SQLiteStatement statement(*this, "PRAGMA auto_vacuum"_s);
+    vacuumMode = statement.getColumnInt(0);
+    return vacuumMode;
+}
+
+void SQLiteDatabase::setAutoVacuum(int vacuumMode)
+{
+    if (!executeCommand("PRAGMA auto_vacuum = " + String::number(vacuumMode)))
+        LOG_ERROR("Failed to set auto vacuum mode to %d", vacuumMode);
+}
 void SQLiteDatabase::setFullsync(bool fsync)
 {
     if (fsync) 

@@ -77,6 +77,9 @@ public:
     void setBusyTimeout(int ms);
     void setBusyHandler(int(*)(void*, int));
     
+    int autoVacuum();
+    void setAutoVacuum(int);
+
     void setFullsync(bool);
     
     // Gets/sets the maximum size in bytes
