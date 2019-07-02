@@ -166,6 +166,9 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_readyTimerHandler(RunLoop::main(), this, &MediaPlayerPrivateGStreamer::readyTimerFired)
     , m_totalBytes(-1)
     , m_preservesPitch(false)
+#if PLATFORM(BROADCOM)
+    , m_webkitAudioSink(0)
+#endif
 {
 #if USE(GLIB)
     m_readyTimerHandler.setPriority(G_PRIORITY_DEFAULT_IDLE);
@@ -2054,7 +2057,15 @@ void MediaPlayerPrivateGStreamer::updateStates()
                 if (!m_fillTimer.isActive() && (state == GST_STATE_PAUSED))
                     m_networkState = MediaPlayer::Idle;
             }
-
+            // This is a broadcom plugin issue and is expected to be fixed as part of BCOM-1927.
+            // Get rid of this, once the fix for BCOM-1927 is available.
+#if PLATFORM(BROADCOM)
+            if (!m_webkitAudioSink) {
+                g_object_get(m_pipeline.get(), "audio-sink", &m_webkitAudioSink, NULL);
+                if (m_webkitAudioSink && g_strrstr (GST_ELEMENT_NAME(m_webkitAudioSink.get()), "brcmaudiosink"))
+                    g_object_set(G_OBJECT(m_webkitAudioSink.get()), "async", TRUE, NULL);
+            }
+#endif
             break;
         default:
             ASSERT_NOT_REACHED();
