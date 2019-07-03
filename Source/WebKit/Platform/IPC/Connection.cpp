@@ -49,6 +49,13 @@ namespace IPC {
 const size_t maxPendingIncomingMessagesKillingThreshold { 50000 };
 #endif
 
+#if PLATFORM(WPE)
+template <typename T> static inline bool isPingMessage(T &message) {
+    return message.messageName() == "MainThreadPing" ||
+        message.messageName() == "DidReceiveMainThreadPing";
+}
+#endif
+
 struct Connection::ReplyHandler {
     RefPtr<FunctionDispatcher> dispatcher;
     Function<void (std::unique_ptr<Decoder>)> handler;
@@ -413,6 +420,14 @@ bool Connection::sendMessage(std::unique_ptr<Encoder> encoder, OptionSet<SendOpt
             || m_inDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount))
         encoder->setShouldDispatchMessageWhenWaitingForSyncReply(true);
 
+#if PLATFORM(WPE)
+    if (isPingMessage(*encoder))
+    {
+        std::lock_guard<Lock> lock(m_outgoingMessagesMutex);
+        m_outgoingMessages.prepend(WTFMove(encoder));
+    }
+    else
+#endif
     {
         std::lock_guard<Lock> lock(m_outgoingMessagesMutex);
         m_outgoingMessages.append(WTFMove(encoder));
@@ -921,6 +936,14 @@ void Connection::didFailToSendSyncMessage()
 
 void Connection::enqueueIncomingMessage(std::unique_ptr<Decoder> incomingMessage)
 {
+#if PLATFORM(WPE)
+    if (isPingMessage(*incomingMessage))
+    {
+        std::lock_guard<Lock> lock(m_incomingMessagesMutex);
+        m_incomingMessages.prepend(WTFMove(incomingMessage));
+    }
+    else
+#endif
     {
         std::lock_guard<Lock> lock(m_incomingMessagesMutex);
 
@@ -948,6 +971,17 @@ void Connection::enqueueIncomingMessage(std::unique_ptr<Decoder> incomingMessage
             protectedThis->dispatchIncomingMessages();
         else
             protectedThis->dispatchOneIncomingMessage();
+
+#if PLATFORM(WPE)
+        {
+            std::lock_guard<Lock> lock(protectedThis->m_incomingMessagesMutex);
+            if (protectedThis->m_incomingMessages.isEmpty())
+                return;
+            if (!isPingMessage(*protectedThis->m_incomingMessages.first()))
+                return;
+        }
+        protectedThis->dispatchOneIncomingMessage();
+#endif
     });
 }
 

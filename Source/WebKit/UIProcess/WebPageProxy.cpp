@@ -7431,6 +7431,8 @@ void WebPageProxy::setFooterBannerHeightForTesting(int height)
 
 void WebPageProxy::imageOrMediaDocumentSizeChanged(const WebCore::IntSize& newSize)
 {
+    if (isValid())
+        m_process->responsivenessTimer().stop();
     m_uiClient->imageOrMediaDocumentSizeChanged(newSize);
 }
 
