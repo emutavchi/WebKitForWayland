@@ -133,6 +133,9 @@ public:
     void enableTrack(TrackPrivateBaseGStreamer::TrackType, unsigned index);
 
     bool handleSyncMessage(GstMessage*) override;
+    bool m_reportedPlaybackStarted;
+    bool m_reportedPlaybackFailed;
+    bool m_reportedPlaybackEOS;
 
 private:
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>&);
