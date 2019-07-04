@@ -92,6 +92,7 @@ public:
 
     void reportAppsrcAtLeastABufferLeft();
     void reportAppsrcNeedDataReceived();
+    MediaTime& allowedGap();
 
 #if ENABLE(ENCRYPTED_MEDIA)
     void demuxerIsDoneSendingProtectionEvents(const GstStructure*);
@@ -131,6 +132,7 @@ private:
     gint m_id;
 
     MediaTime m_initialDuration;
+    MediaTime m_allowedGap;
 
     GRefPtr<GstElement> m_pipeline;
     GRefPtr<GstBus> m_bus;
