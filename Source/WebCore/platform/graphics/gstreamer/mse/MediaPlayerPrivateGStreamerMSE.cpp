@@ -798,6 +798,36 @@ bool MediaPlayerPrivateGStreamerMSE::isTimeBuffered(const MediaTime &time) const
 
 std::optional<VideoPlaybackQualityMetrics> MediaPlayerPrivateGStreamerMSE::videoPlaybackQualityMetrics()
 {
+#if USE(WESTEROS_SINK) && PLATFORM(BROADCOM)
+    if (!m_videoSink)
+        return std::nullopt;
+    GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
+    if (!videoSinkPad)
+        return std::nullopt;
+    GstStructure *structure =
+        gst_structure_new("get_video_playback_quality",
+                          "total", G_TYPE_UINT, 0,
+                          "dropped", G_TYPE_UINT, 0,
+                          "corrupted", G_TYPE_UINT, 0,
+                          nullptr);
+    GstQuery *query = gst_query_new_custom(GST_QUERY_CUSTOM, structure);
+    if (!gst_pad_query(videoSinkPad.get(), query)) {
+        gst_query_unref(query);
+        return std::nullopt;
+    }
+    guint total = 0;
+    guint dropped = 0;
+    guint corrupted = 0;
+    structure = (GstStructure *)gst_query_get_structure(query);
+    if (!gst_structure_get_uint(structure, "total", &total))
+        total = 0;
+    if (!gst_structure_get_uint(structure, "dropped", &dropped))
+        dropped = 0;
+    if (!gst_structure_get_uint(structure, "corrupted", &corrupted))
+        corrupted = 0;
+    gst_query_unref(query);
+    return VideoPlaybackQualityMetrics {total, dropped, corrupted, 0};
+#endif
     return VideoPlaybackQualityMetrics { decodedFrameCount(), droppedFrameCount(), 0, 0.0 };
 }
 
@@ -857,6 +887,13 @@ HashSet<String, ASCIICaseInsensitiveHash>& MediaPlayerPrivateGStreamerMSE::mimeT
         };
         for (auto& type : mimeTypes)
             set.add(type);
+
+        GList* demuxerFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DEMUXER, GST_RANK_MARGINAL);
+        if (gstRegistryHasElementForMediaType(demuxerFactories, "video/x-matroska")) {
+            set.add(AtomicString("video/webm"));
+            set.add(AtomicString("audio/webm"));
+        }
+        gst_plugin_feature_list_free(demuxerFactories);
         return set;
     }();
     return cache;
@@ -967,7 +1004,18 @@ const static HashSet<AtomicString>& codecSet()
             set.add(AtomicString("audio/x-mpeg"));
         }
 
-
+#if PLATFORM(BROADCOM)
+        set.remove(AtomicString("vp8"));
+        set.remove(AtomicString("x-vp8"));
+#endif
+#if ENABLE(VP9_HDR)
+        if (gstRegistryHasElementForMediaType(videoDecoderFactories,"video/x-vp9")) {
+            set.add(AtomicString("vp09.00.*"));
+            set.add(AtomicString("vp09.01.*"));
+            set.add(AtomicString("vp09.02.*"));
+            set.add(AtomicString("vp9.2"));
+        }
+#endif
         gst_plugin_feature_list_free(audioDecoderFactories);
         gst_plugin_feature_list_free(videoDecoderFactories);
 
@@ -985,8 +1033,17 @@ bool MediaPlayerPrivateGStreamerMSE::supportsCodec(String codec)
 
     for (const auto& pattern : codecSet()) {
         bool codecMatchesPattern = !fnmatch(pattern.string().utf8().data(), codec.utf8().data(), 0);
-        if (codecMatchesPattern)
-            return true;
+        if (codecMatchesPattern) {
+            if (codec.startsWith("vp09")) {
+                auto fields = codec.split(".");
+                for (int i = 1; codecMatchesPattern && i < fields.size(); ++i) {
+                    bool ok;
+                    int val = fields[i].toInt(&ok);
+                    codecMatchesPattern = ok && val < 99;
+                }
+            }
+            return codecMatchesPattern;
+        }
     }
 
     return false;
@@ -1040,8 +1097,13 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
     if (!ok)
         height = 0;
 
+#if USE(WESTEROS_SINK)
+    if (width > 3840.0 || height > 2160.0)
+        return result;
+#else
     if (width > MEDIA_MAX_WIDTH || height > MEDIA_MAX_HEIGHT)
         return result;
+#endif
 
     float framerate = parameters.type.parameter("framerate"_s).toFloat(&ok);
     if (ok && framerate > MEDIA_MAX_FRAMERATE)
