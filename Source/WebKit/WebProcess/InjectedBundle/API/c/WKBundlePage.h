@@ -122,6 +122,10 @@ WK_EXPORT void WKBundlePagePostMessage(WKBundlePageRef page, WKStringRef message
 // Switches a connection into a fully synchronous mode, so all messages become synchronous until we get a response.
 WK_EXPORT void WKBundlePagePostSynchronousMessageForTesting(WKBundlePageRef page, WKStringRef messageName, WKTypeRef messageBody, WKTypeRef* returnData);
 
+WK_EXPORT double WKBundlePageGetVolume(WKBundlePageRef page);
+
+WK_EXPORT void WKBundlePageSetVolume(WKBundlePageRef page, double volume);
+
 #ifdef __cplusplus
 }
 #endif

@@ -715,6 +715,16 @@ void WKBundlePageSetEventThrottlingBehaviorOverride(WKBundlePageRef page, WKEven
     toImpl(page)->corePage()->setEventThrottlingBehaviorOverride(behaviorValue);
 }
 
+WK_EXPORT double WKBundlePageGetVolume(WKBundlePageRef page)
+{
+    return (float)toImpl(page)->corePage()->mediaVolume();
+}
+
+WK_EXPORT void WKBundlePageSetVolume(WKBundlePageRef page, double volume)
+{
+    toImpl(page)->corePage()->setMediaVolume((float)volume);
+}
+
 void WKBundlePageSetCompositingPolicyOverride(WKBundlePageRef page, WKCompositingPolicy* policy)
 {
     std::optional<WebCore::CompositingPolicy> policyValue;
