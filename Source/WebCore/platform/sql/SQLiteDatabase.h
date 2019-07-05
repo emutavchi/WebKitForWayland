@@ -52,7 +52,7 @@ public:
     WEBCORE_EXPORT SQLiteDatabase();
     WEBCORE_EXPORT ~SQLiteDatabase();
 
-    WEBCORE_EXPORT bool open(const String& filename, bool forWebSQLDatabase = false);
+    WEBCORE_EXPORT bool open(const String& filename, bool forWebSQLDatabase = false, std::optional<Vector<uint8_t>> = std::nullopt);
     bool isOpen() const { return m_db; }
     WEBCORE_EXPORT void close();
 

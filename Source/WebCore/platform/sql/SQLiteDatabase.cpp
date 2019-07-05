@@ -28,6 +28,8 @@
 #include "SQLiteDatabase.h"
 
 #include "DatabaseAuthorizer.h"
+#include "FileSystem.h"
+#include "FileHandle.h"
 #include "Logging.h"
 #include "MemoryRelease.h"
 #include "SQLiteFileSystem.h"
@@ -38,6 +40,10 @@
 #include <wtf/Threading.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
+
+#ifndef SQLITE_FILE_HEADER
+#define SQLITE_FILE_HEADER "SQLite format 3"
+#endif
 
 namespace WebCore {
 
@@ -70,6 +76,23 @@ static void initializeSQLiteIfNecessary()
     });
 }
 
+#if defined(SQLITE_HAS_CODEC) && ENABLE(SQLITE_ENCRYPTION_EXTENSION)
+static bool isEncryped(const String& filename)
+{
+    auto fileHandle = WebCore::FileHandle(filename, WebCore::OpenForRead);
+    if (!fileHandle.open())
+        return false;
+
+   int magicSize = WTF_ARRAY_LENGTH(SQLITE_FILE_HEADER);
+    auto fileHeader = MallocPtr<char>::malloc(magicSize);
+    if (magicSize != fileHandle.read(fileHeader.get(), magicSize))
+        return false;
+
+    return ::memcmp(fileHeader.get(), SQLITE_FILE_HEADER, magicSize);
+}
+#endif
+
+
 SQLiteDatabase::SQLiteDatabase() = default;
 
 SQLiteDatabase::~SQLiteDatabase()
@@ -77,11 +100,18 @@ SQLiteDatabase::~SQLiteDatabase()
     close();
 }
 
-bool SQLiteDatabase::open(const String& filename, bool forWebSQLDatabase)
+bool SQLiteDatabase::open(const String& filename, bool forWebSQLDatabase, std::optional<Vector<uint8_t>> key)
 {
     initializeSQLiteIfNecessary();
 
     close();
+
+#if defined(SQLITE_HAS_CODEC) && ENABLE(SQLITE_ENCRYPTION_EXTENSION)
+    bool shouldReKey = false;
+    if (key && key->size()) {
+        shouldReKey = fileExists(filename) && !isEncryped(filename);
+    }
+#endif
 
     m_openError = SQLiteFileSystem::openDatabase(filename, &m_db, forWebSQLDatabase);
     if (m_openError != SQLITE_OK) {
@@ -91,6 +121,37 @@ bool SQLiteDatabase::open(const String& filename, bool forWebSQLDatabase)
         sqlite3_close(m_db);
         m_db = 0;
         return false;
+    }
+
+    if (key && key->size()) {
+#if defined(SQLITE_HAS_CODEC) && ENABLE(SQLITE_ENCRYPTION_EXTENSION)
+        if (!shouldReKey)
+            m_openError = sqlite3_key_v2(m_db, nullptr, key->data(), key->size());
+        else {
+            m_openError = sqlite3_rekey_v2(m_db, nullptr, key->data(), key->size());
+            if (m_openError == SQLITE_OK)
+                m_openError = runVacuumCommand();
+        }
+
+        key->fill(0);
+
+        if (m_openError != SQLITE_OK) {
+            m_openErrorMessage = sqlite3_errmsg(m_db);
+            LOG_ERROR("Failed to attach encryption key to SQLite database %s\nCause - %s", filename.ascii().data(),
+                      m_openErrorMessage.data());
+            sqlite3_close(m_db);
+            m_db = 0;
+            return false;
+        }
+
+        if (shouldReKey) {
+            if (!isEncryped(filename))
+                LOG_ERROR("SQLite database file is clear after re-key, path=%s", filename.ascii().data());
+        }
+#else
+        key->fill(0);
+        LOG_ERROR("SQLite codec support is disabled, ignoring encryption key for database %s", filename.ascii().data());
+#endif
     }
 
     overrideUnauthorizedFunctions();

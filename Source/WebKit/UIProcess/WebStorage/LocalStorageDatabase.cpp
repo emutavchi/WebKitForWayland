@@ -27,6 +27,7 @@
 #include "LocalStorageDatabase.h"
 
 #include "LocalStorageDatabaseTracker.h"
+#include "LocalStorageEncryptionExtension.h"
 #include <WebCore/FileSystem.h>
 #include <WebCore/SQLiteStatement.h>
 #include <WebCore/SQLiteTransaction.h>
@@ -93,7 +94,9 @@ bool LocalStorageDatabase::tryToOpenDatabase(DatabaseOpeningStrategy openingStra
         return false;
     }
 
-    if (!m_database.open(m_databasePath)) {
+    std::optional<Vector<uint8_t>> key = LocalStorageEncryptionExtension::singleton().loadKeyWithOrigin(m_securityOrigin);
+
+    if (!m_database.open(m_databasePath,  false, WTFMove(key))) {
         LOG_ERROR("Failed to open database file %s for local storage", m_databasePath.utf8().data());
         return false;
     }

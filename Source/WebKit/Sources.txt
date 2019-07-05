@@ -359,6 +359,8 @@ UIProcess/API/C/WKWebAutomationSession.cpp @no-unify
 UIProcess/API/C/WKWebsiteDataStoreRef.cpp @no-unify
 UIProcess/API/C/WKWebsitePolicies.cpp @no-unify
 UIProcess/API/C/WKWindowFeaturesRef.cpp @no-unify
+UIProcess/API/C/WKLocalStorageEncryptionExtensionClient.cpp @no-unify
+
 
 UIProcess/Authentication/AuthenticationChallengeProxy.cpp
 UIProcess/Authentication/AuthenticationDecisionListener.cpp
@@ -396,6 +398,7 @@ UIProcess/UserContent/WebUserContentControllerProxy.cpp
 
 UIProcess/WebStorage/LocalStorageDatabase.cpp
 UIProcess/WebStorage/LocalStorageDatabaseTracker.cpp
+UIProcess/WebStorage/LocalStorageEncryptionExtension.cpp
 
 UIProcess/WebsiteData/WebsiteDataRecord.cpp
 UIProcess/WebsiteData/WebsiteDataStore.cpp
