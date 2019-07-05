@@ -40,6 +40,7 @@ using WebCore::GstMappedBuffer;
 #define WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_MEDIA_CENC_DECRYPT, WebKitMediaCommonEncryptionDecryptPrivate))
 struct _WebKitMediaCommonEncryptionDecryptPrivate {
     bool m_keyReceived { false };
+    bool m_shouldStop { false };
     Lock m_mutex;
     Condition m_condition;
     RefPtr<CDMInstance> m_cdmInstance;
@@ -260,7 +261,7 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
             GST_ERROR_OBJECT(self, "can't process key requests in less than PAUSED state");
             return GST_FLOW_NOT_SUPPORTED;
         }
-        if (!priv->m_condition.waitFor(priv->m_mutex, WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT, [priv] { return priv->m_isFlushing || priv->m_keyReceived; })) {
+        if (!priv->m_condition.waitFor(priv->m_mutex, WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT, [priv] { return priv->m_isFlushing || priv->m_keyReceived || priv->m_shouldStop; })) {
             if (!priv->m_keyReceived) {
                 GST_ERROR_OBJECT(self, "key not available");
                 return GST_FLOW_NOT_SUPPORTED;
@@ -272,6 +273,16 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
         if (priv->m_isFlushing) {
             GST_DEBUG_OBJECT(self, "flushing");
             return GST_FLOW_FLUSHING;
+        }
+
+        if (priv->m_shouldStop) {
+            GST_DEBUG_OBJECT(self, "stopping");
+            return GST_FLOW_OK;
+        }
+
+        if (!priv->m_keyReceived) {
+            GST_ERROR_OBJECT(self, "key not available");
+            return GST_FLOW_NOT_SUPPORTED;
         }
 
         GST_DEBUG_OBJECT(self, "key received, continuing");
@@ -564,6 +575,7 @@ static GstStateChangeReturn webKitMediaCommonEncryptionDecryptorChangeState(GstE
     case GST_STATE_CHANGE_PAUSED_TO_READY:
         GST_DEBUG_OBJECT(self, "PAUSED->READY");
         priv->m_isFlushing = false;
+        priv->m_shouldStop = true;
         priv->m_condition.notifyOne();
         break;
     default:
