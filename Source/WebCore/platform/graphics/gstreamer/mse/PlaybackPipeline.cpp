@@ -116,6 +116,7 @@ MediaSourcePrivate::AddStatus PlaybackPipeline::addSourceBuffer(RefPtr<SourceBuf
     stream->parent = m_webKitMediaSrc.get();
     stream->appsrc = gst_element_factory_make("appsrc", nullptr);
     stream->appsrcNeedDataFlag = false;
+    stream->busAlreadyNotifiedOfNeedDataFlag = false;
     stream->sourceBuffer = sourceBufferPrivate.get();
 
     // No track has been attached yet.

@@ -75,6 +75,7 @@ struct _Stream {
     // This helps WebKitMediaSrcPrivate.appsrcNeedDataCount, ensuring that needDatas are
     // counted only once per each appsrc.
     bool appsrcNeedDataFlag;
+    bool busAlreadyNotifiedOfNeedDataFlag;
 
     // Used to enforce continuity in the appended data and avoid breaking the decoder.
     // Only used from the main thread.

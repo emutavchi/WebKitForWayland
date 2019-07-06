@@ -134,10 +134,12 @@ static void enabledAppsrcNeedData(GstAppSrc* appsrc, guint, gpointer userData)
         // Search again for the Stream, just in case it was removed between the previous lock and this one.
         appsrcStream = getStreamByAppsrc(webKitMediaSrc, GST_ELEMENT(appsrc));
 
-        if (appsrcStream && appsrcStream->type != WebCore::Invalid)
+        if (appsrcStream && appsrcStream->type != WebCore::Invalid && !appsrcStream->busAlreadyNotifiedOfNeedDataFlag) {
+            appsrcStream->busAlreadyNotifiedOfNeedDataFlag = true;
             webKitMediaSrc->priv->notifier->notify(WebKitMediaSrcMainThreadNotification::ReadyForMoreSamples, [webKitMediaSrc, appsrcStream] {
                 notifyReadyForMoreSamplesMainThread(webKitMediaSrc, appsrcStream);
             });
+        }
 
         GST_OBJECT_UNLOCK(webKitMediaSrc);
     }
@@ -159,6 +161,7 @@ static void enabledAppsrcEnoughData(GstAppSrc *appsrc, gpointer userData)
         return;
 
     stream->sourceBuffer->setReadyForMoreSamples(false);
+    stream->busAlreadyNotifiedOfNeedDataFlag = false;
 }
 
 static gboolean enabledAppsrcSeekData(GstAppSrc*, guint64, gpointer userData)
