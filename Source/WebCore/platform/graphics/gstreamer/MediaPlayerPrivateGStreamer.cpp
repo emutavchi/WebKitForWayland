@@ -1478,6 +1478,10 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                 GST_DEBUG("drm-initialization-data-encountered message from %s", GST_MESSAGE_SRC_NAME(message));
                 handleProtectionStructure(structure);
             }
+            else if (gst_structure_has_name(structure, "drm-decryption-error-encountered")) {
+                GST_DEBUG("drm-decryption-error-encountered message from %s", GST_MESSAGE_SRC_NAME(message));
+                handleDecryptionError(structure);
+            }
 #endif
             else
                 GST_DEBUG("Unhandled element message: %" GST_PTR_FORMAT, structure);
@@ -2242,6 +2246,21 @@ bool MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
 
     return MediaPlayerPrivateGStreamerBase::handleSyncMessage(message);
 }
+
+#if ENABLE(ENCRYPTED_MEDIA)
+void MediaPlayerPrivateGStreamer::handleDecryptionError(const GstStructure* structure)
+{
+    ASSERT(isMainThread());
+
+    RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this)] {
+        if (!weakThis)
+            return;
+
+        GST_WARNING("scheduling decryptionErrorEncountered event");
+        weakThis->m_player->decryptErrorEncountered();
+    });
+}
+#endif
 
 void MediaPlayerPrivateGStreamer::mediaLocationChanged(GstMessage* message)
 {

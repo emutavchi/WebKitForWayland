@@ -1281,6 +1281,11 @@ void MediaPlayer::initializationDataEncountered(const String& initDataType, RefP
 {
     client().mediaPlayerInitializationDataEncountered(initDataType, WTFMove(initData));
 }
+
+void MediaPlayer::decryptErrorEncountered()
+{
+    client().mediaPlayerDecryptErrorEncountered();
+}
 #endif
 
 String MediaPlayer::referrer() const
