@@ -263,7 +263,8 @@ void MediaSource::completeSeek()
     // 4. Resume the seek algorithm at the "Await a stable state" step.
     m_private->seekCompleted();
 
-    monitorSourceBuffers();
+    if (m_pendingSeekTime.isInvalid())
+        monitorSourceBuffers();
 }
 
 Ref<TimeRanges> MediaSource::seekable()
