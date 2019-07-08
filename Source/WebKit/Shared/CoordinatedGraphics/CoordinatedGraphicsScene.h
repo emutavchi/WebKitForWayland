@@ -96,11 +96,14 @@ private:
 
         Vector<RefPtr<WebCore::CoordinatedBackingStore>> releasedImageBackings;
         HashSet<RefPtr<WebCore::CoordinatedBackingStore>> backingStoresWithPendingBuffers;
+#if USE(COORDINATED_GRAPHICS_THREADED)
+        HashSet<RefPtr<WebCore::TextureMapperPlatformLayerProxy>> releasedPlatformLayerProxies;
+#endif
     };
 
     void setRootLayerID(WebCore::CoordinatedLayerID);
     void createLayers(const Vector<WebCore::CoordinatedLayerID>&);
-    void deleteLayers(const Vector<WebCore::CoordinatedLayerID>&);
+    void deleteLayers(const Vector<WebCore::CoordinatedLayerID>&, CommitScope&);
     void setLayerState(WebCore::CoordinatedLayerID, const WebCore::CoordinatedGraphicsLayerState&, CommitScope&);
     void setLayerChildrenIfNeeded(WebCore::TextureMapperLayer*, const WebCore::CoordinatedGraphicsLayerState&);
     void updateTilesIfNeeded(WebCore::TextureMapperLayer*, const WebCore::CoordinatedGraphicsLayerState&, CommitScope&);
@@ -108,7 +111,7 @@ private:
     void removeTilesIfNeeded(WebCore::TextureMapperLayer*, const WebCore::CoordinatedGraphicsLayerState&, CommitScope&);
     void setLayerFiltersIfNeeded(WebCore::TextureMapperLayer*, const WebCore::CoordinatedGraphicsLayerState&);
     void setLayerAnimationsIfNeeded(WebCore::TextureMapperLayer*, const WebCore::CoordinatedGraphicsLayerState&);
-    void syncPlatformLayerIfNeeded(WebCore::TextureMapperLayer*, const WebCore::CoordinatedGraphicsLayerState&);
+    void syncPlatformLayerIfNeeded(WebCore::TextureMapperLayer*, const WebCore::CoordinatedGraphicsLayerState&, CommitScope&);
 
     void syncImageBackings(const WebCore::CoordinatedGraphicsState&, CommitScope&);
     void createImageBacking(WebCore::CoordinatedImageBackingID);
@@ -128,7 +131,7 @@ private:
     void updateViewport();
 
     void createLayer(WebCore::CoordinatedLayerID);
-    void deleteLayer(WebCore::CoordinatedLayerID);
+    void deleteLayer(WebCore::CoordinatedLayerID, CommitScope&);
 
     void assignImageBackingToLayer(WebCore::TextureMapperLayer*, WebCore::CoordinatedImageBackingID);
     void ensureRootLayer();

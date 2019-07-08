@@ -110,13 +110,14 @@ void CoordinatedGraphicsScene::updateViewport()
         m_client->updateViewport();
 }
 
-void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
+void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state, CommitScope& commitScope)
 {
 #if USE(COORDINATED_GRAPHICS_THREADED)
     if (!state.platformLayerChanged)
         return;
 
     if (state.platformLayerProxy) {
+        commitScope.releasedPlatformLayerProxies.remove(state.platformLayerProxy);
         m_platformLayerProxies.set(layer, state.platformLayerProxy);
         state.platformLayerProxy->activateOnCompositingThread(this, layer);
     } else
@@ -124,6 +125,7 @@ void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* lay
 #else
     UNUSED_PARAM(layer);
     UNUSED_PARAM(state);
+    UNUSED_PARAM(commitScope);
 #endif
 }
 
@@ -222,7 +224,7 @@ void CoordinatedGraphicsScene::setLayerState(CoordinatedLayerID id, const Coordi
     createTilesIfNeeded(layer, layerState);
     removeTilesIfNeeded(layer, layerState, commitScope);
     updateTilesIfNeeded(layer, layerState, commitScope);
-    syncPlatformLayerIfNeeded(layer, layerState);
+    syncPlatformLayerIfNeeded(layer, layerState, commitScope);
 }
 
 TextureMapperLayer* CoordinatedGraphicsScene::getLayerByIDIfExists(CoordinatedLayerID id)
@@ -243,13 +245,13 @@ void CoordinatedGraphicsScene::createLayer(CoordinatedLayerID id)
     m_layers.add(id, WTFMove(newLayer));
 }
 
-void CoordinatedGraphicsScene::deleteLayers(const Vector<CoordinatedLayerID>& layerIDs)
+void CoordinatedGraphicsScene::deleteLayers(const Vector<CoordinatedLayerID>& layerIDs, CommitScope& commitScope)
 {
     for (auto& layerID : layerIDs)
-        deleteLayer(layerID);
+        deleteLayer(layerID, commitScope);
 }
 
-void CoordinatedGraphicsScene::deleteLayer(CoordinatedLayerID layerID)
+void CoordinatedGraphicsScene::deleteLayer(CoordinatedLayerID layerID, CommitScope& commitScope)
 {
     std::unique_ptr<TextureMapperLayer> layer = m_layers.take(layerID);
     ASSERT(layer);
@@ -257,7 +259,9 @@ void CoordinatedGraphicsScene::deleteLayer(CoordinatedLayerID layerID)
     m_backingStores.remove(layer.get());
 #if USE(COORDINATED_GRAPHICS_THREADED)
     if (auto platformLayerProxy = m_platformLayerProxies.take(layer.get()))
-        platformLayerProxy->invalidate();
+        commitScope.releasedPlatformLayerProxies.add(platformLayerProxy);
+#else
+    UNUSED_PARAM(commitScope);
 #endif
 }
 
@@ -436,7 +440,7 @@ void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& 
     CommitScope commitScope;
 
     createLayers(state.layersToCreate);
-    deleteLayers(state.layersToRemove);
+    deleteLayers(state.layersToRemove, commitScope);
 
     if (state.rootCompositingLayer != m_rootLayerID)
         setRootLayerID(state.rootCompositingLayer);
@@ -448,6 +452,11 @@ void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& 
 
     for (auto& backingStore : commitScope.backingStoresWithPendingBuffers)
         backingStore->commitTileOperations(*m_textureMapper);
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    for (auto& proxy : commitScope.releasedPlatformLayerProxies)
+        proxy->invalidate();
+#endif
 }
 
 void CoordinatedGraphicsScene::ensureRootLayer()
@@ -510,7 +519,7 @@ void CoordinatedGraphicsScene::applyStateChangesAndNotifyVideoPosition(const Vec
         CommitScope commitScope;
 
         createLayers(state.layersToCreate);
-        deleteLayers(state.layersToRemove);
+        deleteLayers(state.layersToRemove, commitScope);
 
         if (state.rootCompositingLayer != m_rootLayerID)
             setRootLayerID(state.rootCompositingLayer);
