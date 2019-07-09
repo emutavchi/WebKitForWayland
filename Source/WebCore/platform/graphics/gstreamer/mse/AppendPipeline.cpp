@@ -1374,6 +1374,7 @@ void AppendPipeline::demuxerIsDoneSendingProtectionEvents(const GstStructure* st
     for (unsigned i = 0; i < streamEncryptionEventsListSize; ++i)
         protectionEvents.uncheckedAppend(static_cast<GstEvent*>(g_value_get_boxed(gst_value_list_get_value(streamEncryptionEventsList, i))));
     m_playerPrivate->handleProtectionEvents(protectionEvents);
+    m_sourceBufferPrivate->useEncryptedContentSizeLimits();
 }
 #endif
 

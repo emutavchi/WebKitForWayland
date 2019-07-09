@@ -178,5 +178,11 @@ void SourceBufferPrivateGStreamer::didReceiveAllPendingSamples()
         m_sourceBufferPrivateClient->sourceBufferPrivateAppendComplete(SourceBufferPrivateClient::AppendSucceeded);
 }
 
+void SourceBufferPrivateGStreamer::useEncryptedContentSizeLimits()
+{
+    if (m_sourceBufferPrivateClient)
+        m_sourceBufferPrivateClient->useEncryptedContentSizeLimits();
+}
+
 }
 #endif
