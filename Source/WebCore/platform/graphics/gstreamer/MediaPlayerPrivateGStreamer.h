@@ -265,6 +265,9 @@ private:
     RunLoop::Timer<MediaPlayerPrivateGStreamer> m_readyTimerHandler;
     mutable long long m_totalBytes;
     URL m_url;
+#if ENABLE(ENCRYPTED_MEDIA)
+    URL m_lastReportedUrl;
+#endif
     bool m_preservesPitch;
     // TODO: EOS temporary fix. To be removed once BCOM-1927 is fixed.
 #if PLATFORM(BROADCOM)
