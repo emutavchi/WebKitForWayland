@@ -101,6 +101,7 @@ public:
 #endif
 
 private:
+    void drainBusIfNeeded();
     void resetPipeline();
     void checkEndOfAppend();
     void handleAppsrcAtLeastABufferLeft();

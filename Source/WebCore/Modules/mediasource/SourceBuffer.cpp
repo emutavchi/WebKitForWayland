@@ -421,6 +421,7 @@ void SourceBuffer::removedFromMediaSource()
 
     m_private->removedFromMediaSource();
     m_source = nullptr;
+    m_asyncEventQueue.cancelAllEvents();
 }
 
 void SourceBuffer::seekToTime(const MediaTime& time)
