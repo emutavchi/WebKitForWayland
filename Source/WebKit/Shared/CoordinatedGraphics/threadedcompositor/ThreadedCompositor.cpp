@@ -120,6 +120,7 @@ void ThreadedCompositor::invalidate()
         m_context = nullptr;
         m_client.didDestroyGLContext();
         m_scene = nullptr;
+        m_nonCompositedWebGLTimer = nullptr;
     });
     m_compositingRunLoop = nullptr;
 }
@@ -190,7 +191,7 @@ void ThreadedCompositor::forceRepaint()
 
 void ThreadedCompositor::renderNonCompositedWebGL()
 {
-    m_client.willRenderFrame();
+    // m_client.willRenderFrame();
 
     // Retrieve the scene attributes in a thread-safe manner.
     // Do this in order to free the structures memory, as they are not really used in this case.
@@ -204,7 +205,19 @@ void ThreadedCompositor::renderNonCompositedWebGL()
 
     m_scene->applyStateChangesAndNotifyVideoPosition(states);
 
-    m_client.didRenderFrame();
+    // m_client.didRenderFrame();
+
+    if (!m_nonCompositedWebGLTimer)
+        m_nonCompositedWebGLTimer = std::make_unique<RunLoop::Timer<ThreadedCompositor>>(
+            RunLoop::current(), this, &ThreadedCompositor::frameComplete);
+
+    if (!m_nonCompositedWebGLTimer->isActive()) {
+        const WTF::Seconds MinimalTimeoutForAnimations = 16_ms; // 16 ms equals to 1/60 Sec
+        const WTF::MonotonicTime now = WTF::MonotonicTime::now();
+        const WTF::Seconds delay = std::max<WTF::Seconds>(0_s,  m_frameCompleteTime + MinimalTimeoutForAnimations - now);
+        m_frameCompleteTime = now + delay;
+        m_nonCompositedWebGLTimer->startOneShot(Seconds { delay });
+    }
 }
 
 void ThreadedCompositor::renderLayerTree()

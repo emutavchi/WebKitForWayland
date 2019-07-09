@@ -106,6 +106,8 @@ private:
     WebCore::TextureMapper::PaintFlags m_paintFlags { 0 };
     bool m_inForceRepaint { false };
     bool m_nonCompositedWebGLEnabled { false };
+    WTF::MonotonicTime m_frameCompleteTime;
+    std::unique_ptr<RunLoop::Timer<ThreadedCompositor>> m_nonCompositedWebGLTimer { nullptr };
 
     std::unique_ptr<CompositingRunLoop> m_compositingRunLoop;
 
