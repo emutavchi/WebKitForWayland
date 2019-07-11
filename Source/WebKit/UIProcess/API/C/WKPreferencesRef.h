@@ -379,6 +379,10 @@ WK_EXPORT bool WKPreferencesGetCookieEnabled(WKPreferencesRef preferences);
 WK_EXPORT void WKPreferencesSetWebGLEnabled(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetWebGLEnabled(WKPreferencesRef);
 
+// Defaults to false.
+WK_EXPORT void WKPreferencesSetAccessibilityEnabled(WKPreferencesRef preferences, bool accessibilityEnabled);
+WK_EXPORT bool WKPreferencesGetAccessibilityEnabled(WKPreferencesRef preferences);
+
 #ifdef __cplusplus
 }
 #endif

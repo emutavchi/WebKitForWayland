@@ -980,8 +980,8 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
     else if (coreObject->orientation() == AccessibilityOrientation::Vertical)
         atk_state_set_add_state(stateSet, ATK_STATE_VERTICAL);
 
-    if (coreObject->hasPopup())
-        atk_state_set_add_state(stateSet, ATK_STATE_HAS_POPUP);
+    //if (coreObject->hasPopup())
+    //    atk_state_set_add_state(stateSet, ATK_STATE_HAS_POPUP);
 
     if (coreObject->isIndeterminate())
         atk_state_set_add_state(stateSet, ATK_STATE_INDETERMINATE);

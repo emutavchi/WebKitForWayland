@@ -1360,3 +1360,7 @@ AllowScriptsToCloseWindows:
 ScrollToFocusedElementEnabled:
   type: bool
   defaultValue: false
+
+AccessibilityEnabled:
+  type: bool
+  defaultValue: false

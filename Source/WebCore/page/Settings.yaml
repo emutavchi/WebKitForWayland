@@ -769,3 +769,6 @@ nonCompositedWebGLEnabled:
 localStorageQuota:
   type: unsigned
   initial: 100*1024
+AccessibilityEnabled:
+  type: bool
+  initial: false

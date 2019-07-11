@@ -354,7 +354,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_layerHostingMode(parameters.layerHostingMode)
 #if PLATFORM(COCOA)
     , m_viewGestureGeometryCollector(makeUniqueRef<ViewGestureGeometryCollector>(*this))
-#elif HAVE(ACCESSIBILITY) && PLATFORM(GTK)
+#elif HAVE(ACCESSIBILITY) && (PLATFORM(GTK) || PLATFORM(WPE))
     , m_accessibilityObject(nullptr)
 #endif
     , m_setCanStartMediaTimer(RunLoop::main(), this, &WebPage::setCanStartMediaTimerFired)
@@ -3185,6 +3185,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
         m_processSuppressionEnabled = processSuppressionEnabled;
         updateThrottleState();
     }
+
+    m_accessibilityEnabled = store.getBoolValueForKey(WebPreferencesKey::accessibilityEnabledKey());
 
 #if PLATFORM(COCOA)
     m_pdfPluginEnabled = store.getBoolValueForKey(WebPreferencesKey::pdfPluginEnabledKey());
