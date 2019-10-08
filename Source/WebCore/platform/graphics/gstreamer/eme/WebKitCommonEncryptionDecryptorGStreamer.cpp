@@ -49,6 +49,7 @@ struct _WebKitMediaCommonEncryptionDecryptPrivate {
     Vector<GRefPtr<GstEvent>> m_protectionEvents;
     uint32_t m_currentEvent { 0 };
     bool m_isFlushing { false };
+    bool m_notifiedDecryptStart { false };
 };
 
 static GstStateChangeReturn webKitMediaCommonEncryptionDecryptorChangeState(GstElement*, GstStateChange transition);
@@ -361,6 +362,13 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
         gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
         gst_element_post_message(GST_ELEMENT(self), gst_message_new_element(GST_OBJECT(self), gst_structure_new("drm-decryption-error-encountered", nullptr)));
         return GST_FLOW_NOT_SUPPORTED;
+    }
+
+    if(!priv->m_notifiedDecryptStart && priv->m_cdmInstance) {
+        priv->m_notifiedDecryptStart = true;
+        RefPtr<WebCore::MediaPlayerGStreamerEncryptedPlayTracker> tracker = priv->m_cdmInstance->getTracker();
+        if(tracker)
+            tracker->notifyDecryptionStarted();
     }
 
     klass->releaseCipher(self);
