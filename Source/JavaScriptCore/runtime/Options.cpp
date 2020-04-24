@@ -503,6 +503,9 @@ static void recomputeDependentOptions()
     if (Options::softReservedZoneSize() < Options::reservedZoneSize() + minimumReservedZoneSize)
         Options::softReservedZoneSize() = Options::reservedZoneSize() + minimumReservedZoneSize;
 
+    if (!getenv("RFC_ENABLE_WEBKIT_INSPECTOR"))
+        Options::disableStackTrace() = true;
+
 #if USE(JSVALUE32_64)
     // FIXME: Make probe OSR exit work on 32-bit:
     // https://bugs.webkit.org/show_bug.cgi?id=177956
