@@ -78,6 +78,10 @@ public:
     void setFullScreen(bool fullScreenState) { m_fullScreenModeActive = fullScreenState; };
 #endif
 
+#if ENABLE(GAMEPAD)
+    static WebKit::WebPageProxy* platformWebPageProxyForGamepadInput();
+#endif
+
 private:
     View(struct wpe_view_backend*, const API::PageConfiguration&);
 

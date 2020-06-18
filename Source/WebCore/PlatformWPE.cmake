@@ -75,3 +75,13 @@ list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${UPOWERGLIB_INCLUDE_DIRS}
     ${WPE_INCLUDE_DIRS}
 )
+
+if (ENABLE_GAMEPAD)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/platform/gamepad/wpe"
+    )
+    list(APPEND WebCore_SOURCES
+        platform/gamepad/wpe/WPEGamepad.cpp
+        platform/gamepad/wpe/WPEGamepadProvider.cpp
+    )
+endif ()
