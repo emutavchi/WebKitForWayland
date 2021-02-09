@@ -94,6 +94,9 @@ public:
 #endif
 
    MediaTime maxTimeLoaded() const override;
+
+   bool gstSeekCompleted() const { return m_gstSeekCompleted; }
+
 private:
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>&);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
