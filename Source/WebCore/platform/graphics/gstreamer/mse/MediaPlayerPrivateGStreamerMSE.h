@@ -85,6 +85,8 @@ public:
     WTFLogChannel& logChannel() const final { return WebCore::LogMediaSource; }
 #endif
 
+   bool gstSeekCompleted() const { return m_gstSeekCompleted; }
+
 private:
     friend class MediaPlayerFactoryGStreamerMSE;
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>&);
