@@ -753,8 +753,7 @@ String MediaKeySession::mediaKeysStorageDirectory() const
 
 bool MediaKeySession::hasPendingActivity() const
 {
-    notImplemented();
-    return false;
+    return m_eventQueue.hasPendingEvents() || m_taskQueue.hasPendingTasks();
 }
 
 const char* MediaKeySession::activeDOMObjectName() const
