@@ -478,6 +478,8 @@ private:
     bool waitForCDMAttachment();
 #endif
 
+    static void elementSetupCallback(MediaPlayerPrivateGStreamer*, GstElement*, GstElement*);
+
     Atomic<bool> m_isPlayerShuttingDown;
 #if ENABLE(VIDEO_TRACK)
     GRefPtr<GstElement> m_textAppSink;

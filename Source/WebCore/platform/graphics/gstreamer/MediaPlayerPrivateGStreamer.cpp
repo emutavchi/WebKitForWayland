@@ -2916,6 +2916,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin(const URL& url, const String&
 #endif
     }), this);
 
+    g_signal_connect_swapped(m_pipeline.get(), "element-setup", G_CALLBACK(elementSetupCallback), this);
     g_signal_connect_swapped(m_pipeline.get(), "source-setup", G_CALLBACK(sourceSetupCallback), this);
     if (m_isLegacyPlaybin) {
         g_signal_connect_swapped(m_pipeline.get(), "video-changed", G_CALLBACK(videoChangedCallback), this);
@@ -2975,6 +2976,12 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin(const URL& url, const String&
     GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
     if (videoSinkPad)
         g_signal_connect_swapped(videoSinkPad.get(), "notify::caps", G_CALLBACK(videoSinkCapsChangedCallback), this);
+#endif
+
+#if USE(WESTEROS_SINK)
+    // configure westeros sink before it allocates resources
+    if (m_videoSink)
+        elementSetupCallback(this, m_videoSink.get(), m_pipeline.get());
 #endif
 }
 
@@ -3820,6 +3827,54 @@ WTFLogChannel& MediaPlayerPrivateGStreamer::logChannel() const
     return WebCore::LogMedia;
 }
 #endif
+
+void MediaPlayerPrivateGStreamer::elementSetupCallback(MediaPlayerPrivateGStreamer* player, GstElement* element, GstElement* /*pipeline*/)
+{
+    GST_DEBUG("Element set-up for %s", GST_ELEMENT_NAME(element));
+#if PLATFORM(BROADCOM)
+    if (g_str_has_prefix(GST_ELEMENT_NAME(element), "brcmaudiosink")) {
+        g_object_set(G_OBJECT(element), "async", TRUE, nullptr);
+    }
+#endif
+
+#if USE(WESTEROS_SINK)
+    static GstCaps *westerosSinkCaps = nullptr;
+    static GType westerosSinkType = G_TYPE_INVALID;
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        GRefPtr<GstElementFactory> westerosfactory = adoptGRef(gst_element_factory_find("westerossink"));
+        if (westerosfactory) {
+            westerosSinkType = gst_element_factory_get_element_type(westerosfactory.get());
+            for (auto *t = gst_element_factory_get_static_pad_templates(westerosfactory.get()); t != nullptr; t = g_list_next(t)) {
+               GstStaticPadTemplate *padtemplate = (GstStaticPadTemplate*)t->data;
+               if (padtemplate->direction != GST_PAD_SINK)
+                 continue;
+               if (westerosSinkCaps)
+                 westerosSinkCaps = gst_caps_merge(westerosSinkCaps, gst_static_caps_get (&padtemplate->static_caps));
+               else
+                 westerosSinkCaps = gst_static_caps_get (&padtemplate->static_caps);
+           }
+        }
+    });
+    if (G_TYPE_CHECK_INSTANCE_TYPE(G_OBJECT(element), westerosSinkType)) {
+#if ENABLE(MEDIA_STREAM)
+        if (player->m_streamPrivate != nullptr && g_object_class_find_property(G_OBJECT_GET_CLASS(element), "immediate-output")) {
+            GST_DEBUG("Enable 'immediate-output' in WesterosSink");
+            g_object_set (G_OBJECT(element), "immediate-output", TRUE, nullptr);
+        }
+#endif
+    }
+    // FIXME: Following is a hack needed to get westeros-sink autoplug correctly with playbin3.
+    if (!player->m_isLegacyPlaybin && westerosSinkCaps && g_str_has_prefix(GST_ELEMENT_NAME(element), "decodebin3")) {
+        GstCaps* defaultCaps = nullptr;
+        g_object_get (element, "caps", &defaultCaps, NULL);
+        defaultCaps = gst_caps_merge(defaultCaps, gst_caps_ref(westerosSinkCaps));
+        g_object_set (element, "caps", defaultCaps, NULL);
+        GST_ERROR ("setting stop caps tp %" GST_PTR_FORMAT, defaultCaps);
+        gst_caps_unref(defaultCaps);
+    }
+#endif
+}
 
 }
 
