@@ -123,6 +123,11 @@ static void appendPipelineStateChangeMessageCallback(GstBus*, GstMessage* messag
     appendPipeline->handleStateChangeMessage(message);
 }
 
+static void appendPipelineErrorMessageCallback(GstBus*, GstMessage* message, AppendPipeline* appendPipeline)
+{
+    appendPipeline->handleErrorMessage(message);
+}
+
 // Auxiliary class to compute the sample duration when GStreamer provides an invalid one.
 class BufferMetadataCompleter {
 public:
@@ -219,6 +224,7 @@ AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceCli
     g_signal_connect(m_bus.get(), "sync-message::need-context", G_CALLBACK(appendPipelineNeedContextMessageCallback), this);
     g_signal_connect(m_bus.get(), "message::application", G_CALLBACK(appendPipelineApplicationMessageCallback), this);
     g_signal_connect(m_bus.get(), "message::state-changed", G_CALLBACK(appendPipelineStateChangeMessageCallback), this);
+    g_signal_connect(m_bus.get(), "message::error", G_CALLBACK(appendPipelineErrorMessageCallback), this);
 
     // We assign the created instances here instead of adoptRef() because gst_bin_add_many()
     // below will already take the initial reference and we need an additional one for us.
@@ -492,6 +498,19 @@ void AppendPipeline::handleStateChangeMessage(GstMessage* message)
             gst_element_state_get_name(currentState),
             gst_element_state_get_name(newState)).utf8();
         GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(m_pipeline.get()), GST_DEBUG_GRAPH_SHOW_ALL, dotFileName.data());
+    }
+}
+
+void AppendPipeline::handleErrorMessage(GstMessage* message)
+{
+    ASSERT(WTF::isMainThread());
+    GUniqueOutPtr<GError> err;
+    GUniqueOutPtr<gchar> debug;
+    gst_message_parse_error(message, &err.outPtr(), &debug.outPtr());
+    GST_ERROR("Error %d: %s", err->code, err->message);
+    if (m_appendState != AppendState::Invalid) {
+        setAppendState(AppendState::Invalid);
+        m_sourceBufferPrivate->didFailParsing();
     }
 }
 

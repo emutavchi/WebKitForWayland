@@ -53,6 +53,7 @@ public:
     void handleNeedContextSyncMessage(GstMessage*);
     void handleApplicationMessage(GstMessage*);
     void handleStateChangeMessage(GstMessage*);
+    void handleErrorMessage(GstMessage*);
 
     gint id();
     AppendState appendState() { return m_appendState; }
