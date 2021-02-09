@@ -70,7 +70,7 @@ public:
     WTF_EXPORT_PRIVATE void setShouldUsePeriodicMemoryMonitor(bool);
 
 #if OS(LINUX)
-    WTF_EXPORT_PRIVATE void triggerMemoryPressureEvent(bool isCritical);
+    WTF_EXPORT_PRIVATE void triggerMemoryPressureEvent(bool isCritical, bool isSynchronous);
 #endif
 
     void setMemoryKillCallback(WTF::Function<void()>&& function) { m_memoryKillCallback = WTFMove(function); }

@@ -240,7 +240,7 @@ void ChildProcess::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReferen
 #if OS(LINUX)
 void ChildProcess::didReceiveMemoryPressureEvent(bool isCritical)
 {
-    MemoryPressureHandler::singleton().triggerMemoryPressureEvent(isCritical);
+    MemoryPressureHandler::singleton().triggerMemoryPressureEvent(isCritical, isCritical);
 }
 #endif
 
