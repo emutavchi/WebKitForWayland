@@ -110,7 +110,7 @@ private:
     void checkShouldPaintBrokenImage();
 
     void switchClientsToRevalidatedResource() final;
-    bool mayTryReplaceEncodedData() const final { return true; }
+    bool mayTryReplaceEncodedData() const final;
 
     void didAddClient(CachedResourceClient&) final;
     void didRemoveClient(CachedResourceClient&) final;
