@@ -983,6 +983,12 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
 
     if (MediaTime::zeroTime() != rangeStart && rangeStart < maximumRangeEnd) {
         removeCodedFrames(MediaTime::zeroTime(), rangeStart, true);
+        // Check if removed enough already
+        if (extraMemoryCost() + newDataSize < maximumBufferSize) {
+            LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - the buffer is not full anymore.", this);
+            m_bufferFull = false;
+            return;
+        }
     }
 
     while (rangeStart < maximumRangeEnd) {
