@@ -977,13 +977,17 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
     MediaTime maximumRangeEnd = currentTime - thirtySeconds;
 
 #if defined(METROLOGICAL)
-    MediaTime microSecond = MediaTime(1, 1000000);
     for (auto& trackBuffer : m_trackBufferMap.values()) {
+        auto t = std::max(MediaTime::zeroTime(), currentTime - MediaTime(2, 1));
         auto prevSync =
-            trackBuffer.samples.decodeOrder().findSyncSamplePriorToPresentationTime(currentTime);
+            trackBuffer.samples.decodeOrder().findSyncSamplePriorToPresentationTime(t);
         if (prevSync != trackBuffer.samples.decodeOrder().rend()) {
             // Don't include the sync frame in the range, just finish right before it.
-            maximumRangeEnd = prevSync->second->presentationTime() - microSecond;
+            prevSync++;
+        }
+        if (prevSync != trackBuffer.samples.decodeOrder().rend()) {
+            maximumRangeEnd = prevSync->second->presentationTime();
+            break;
         }
     }
 #endif
