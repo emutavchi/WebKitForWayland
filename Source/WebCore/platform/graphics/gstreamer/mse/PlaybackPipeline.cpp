@@ -166,6 +166,7 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
 
     GST_OBJECT_LOCK(webKitMediaSrc);
     Stream* stream = getStreamBySourceBufferPrivate(webKitMediaSrc, sourceBufferPrivate.get());
+    bool allTracksConfigured = webKitMediaSrc->priv->allTracksConfigured;
     GST_OBJECT_UNLOCK(webKitMediaSrc);
 
     ASSERT(stream);
@@ -215,7 +216,7 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
     if (signal != -1)
         g_signal_emit(G_OBJECT(stream->parent), webKitMediaSrcSignals[signal], 0, nullptr);
 
-    if (caps) {
+    if (caps && !allTracksConfigured) {
         // Set caps to trigger early pipeline initialization
         gst_app_src_set_caps(GST_APP_SRC(stream->appsrc), caps);
 
