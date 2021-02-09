@@ -637,6 +637,8 @@ public:
     void platformHide();
     void platformShow();
 
+    String errorMessage() const;
+
 private:
     MediaPlayer(MediaPlayerClient&);
     MediaPlayer(MediaPlayerClient&, MediaPlayerEnums::MediaEngineIdentifier);

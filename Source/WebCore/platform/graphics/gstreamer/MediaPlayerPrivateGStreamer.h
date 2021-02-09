@@ -406,6 +406,8 @@ protected:
 
     Optional<GstVideoDecoderPlatform> m_videoDecoderPlatform;
 
+    String errorMessage() const override { return m_errorMessage; }
+
 private:
     bool isPlayerShuttingDown() const { return m_isPlayerShuttingDown.load(); }
     MediaTime maxTimeLoaded() const;
@@ -563,6 +565,7 @@ private:
     Ref<const Logger> m_logger;
     const void* m_logIdentifier;
 #endif
+    String m_errorMessage;
 };
 
 }

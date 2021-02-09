@@ -300,6 +300,8 @@ public:
 
     virtual void platformHide() { }
     virtual void platformShow() { }
+
+    virtual String errorMessage() const { return {}; }
 };
 
 }
