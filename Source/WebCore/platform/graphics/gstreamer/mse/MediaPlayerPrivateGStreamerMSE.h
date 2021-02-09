@@ -93,6 +93,7 @@ public:
     void dispatchDecryptionStructure(GUniquePtr<GstStructure>&&) final;
 #endif
 
+   MediaTime maxTimeLoaded() const override;
 private:
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>&);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
