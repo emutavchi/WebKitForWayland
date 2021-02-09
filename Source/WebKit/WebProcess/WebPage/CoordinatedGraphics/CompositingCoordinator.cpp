@@ -39,6 +39,7 @@
 #include <WebCore/Page.h>
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/SetForScope.h>
+#include <WebCore/Settings.h>
 
 #if USE(GLIB_EVENT_LOOP)
 #include <wtf/glib/RunLoopSourcePriority.h>
@@ -51,6 +52,7 @@ CompositingCoordinator::CompositingCoordinator(Page* page, CompositingCoordinato
     : m_page(page)
     , m_client(client)
     , m_paintingEngine(Nicosia::PaintingEngine::create())
+    , m_nonCompositedWebGLEnabled(page->settings().nonCompositedWebGLEnabled())
 {
     m_nicosia.scene = Nicosia::Scene::create();
     m_state.nicosia.scene = m_nicosia.scene;
@@ -119,7 +121,8 @@ bool CompositingCoordinator::flushPendingLayerChanges()
     bool didSync = m_page->mainFrame().view()->flushCompositingStateIncludingSubframes();
 
     auto& coordinatedLayer = downcast<CoordinatedGraphicsLayer>(*m_rootLayer);
-    coordinatedLayer.updateContentBuffersIncludingSubLayers();
+    if (!m_nonCompositedWebGLEnabled)
+      coordinatedLayer.updateContentBuffersIncludingSubLayers();
     coordinatedLayer.syncPendingStateChangesIncludingSubLayers();
 
     flushPendingImageBackingChanges();

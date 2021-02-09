@@ -145,6 +145,7 @@ private:
     bool m_isFlushingLayerChanges { false };
     bool m_shouldSyncFrame { false };
     bool m_didInitializeRootCompositingLayer { false };
+    bool m_nonCompositedWebGLEnabled { false };
 
     WebCore::FloatRect m_visibleContentsRect;
 
