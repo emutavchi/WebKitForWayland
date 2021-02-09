@@ -798,7 +798,7 @@ static PlatformTimeRanges removeSamplesFromTrackBuffer(const DecodeOrderSampleMa
                 additionalErasedRanges.add(previousSample.presentationTime() + previousSample.duration(), erasedStart);
         }
 
-        auto endIterator = trackBuffer.samples.presentationOrder().findSampleStartingOnOrAfterPresentationTime(erasedEnd);
+        auto endIterator = trackBuffer.samples.presentationOrder().findSampleContainingOrAfterPresentationTime(erasedEnd);
         if (endIterator == trackBuffer.samples.presentationOrder().end())
             additionalErasedRanges.add(erasedEnd, MediaTime::positiveInfiniteTime());
         else {
