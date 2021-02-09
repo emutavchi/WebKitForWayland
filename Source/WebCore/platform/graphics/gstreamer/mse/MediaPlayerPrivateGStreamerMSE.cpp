@@ -1029,11 +1029,9 @@ void MediaPlayerPrivateGStreamerMSE::unmarkEndOfStream()
 
 MediaTime MediaPlayerPrivateGStreamerMSE::currentMediaTime() const
 {
-    MediaTime cachedPosition = m_cachedPosition;
     MediaTime position = MediaPlayerPrivateGStreamer::currentMediaTime();
-    MediaTime playbackProgress = abs(position - cachedPosition);
 
-    if (m_eosPending && abs(position - durationMediaTime()) < MediaTime(GST_SECOND, GST_SECOND) && !playbackProgress) {
+    if (m_eosPending && abs(position - durationMediaTime()) < MediaTime(GST_SECOND, GST_SECOND) && (!m_playbackProgress || position > durationMediaTime())) {
         if (m_networkState != MediaPlayer::Loaded) {
             m_networkState = MediaPlayer::Loaded;
             m_player->networkStateChanged();

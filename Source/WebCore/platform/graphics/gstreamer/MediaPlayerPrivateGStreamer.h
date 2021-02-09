@@ -193,6 +193,7 @@ protected:
     bool m_buffering;
     int m_bufferingPercentage;
     mutable MediaTime m_cachedPosition;
+    mutable MediaTime m_playbackProgress;
     bool m_canFallBackToLastFinishedSeekPosition;
     bool m_changingRate;
     bool m_downloadFinished;
