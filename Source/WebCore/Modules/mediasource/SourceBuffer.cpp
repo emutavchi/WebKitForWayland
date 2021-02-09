@@ -64,6 +64,19 @@ namespace WebCore {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(SourceBuffer);
 
+static inline MediaTime roundTowardsTimeScaleWithRoundingMargin(const MediaTime& time, uint32_t timeScale, const MediaTime& roundingMargin)
+{
+    while (true) {
+        if (time.timeScale() == timeScale)
+            return time;
+        MediaTime roundedTime = time.toTimeScale(timeScale);
+        if (abs(roundedTime - time) < roundingMargin || timeScale >= MediaTime::MaximumTimeScale)
+            return roundedTime;
+        if (!WTF::safeMultiply(timeScale, 2, timeScale) || timeScale > MediaTime::MaximumTimeScale)
+            timeScale = MediaTime::MaximumTimeScale;
+    }
+};
+
 static const double ExponentialMovingAverageCoefficient = 0.1;
 
 // Do not enqueue samples spanning a significant unbuffered gap.
@@ -840,7 +853,9 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
             RefPtr<MediaSample> sample = sampleIterator->second;
             if (!sample->isDivisable())
                 return;
-            std::pair<RefPtr<MediaSample>, RefPtr<MediaSample>> replacementSamples = sample->divide(time);
+            MediaTime microsecond(1, 1000000);
+            MediaTime roundedTime = roundTowardsTimeScaleWithRoundingMargin(time, sample->presentationTime().timeScale(), microsecond);
+            std::pair<RefPtr<MediaSample>, RefPtr<MediaSample>> replacementSamples = sample->divide(roundedTime);
             if (!replacementSamples.first || !replacementSamples.second)
                 return;
             DEBUG_LOG(LOGIDENTIFIER, "splitting sample ", *sample, " into ", *replacementSamples.first, " and ", *replacementSamples.second);
@@ -1582,17 +1597,6 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
         TrackBuffer& trackBuffer = it->value;
 
         MediaTime microsecond(1, 1000000);
-
-        auto roundTowardsTimeScaleWithRoundingMargin = [] (const MediaTime& time, uint32_t timeScale, const MediaTime& roundingMargin) {
-            while (true) {
-                MediaTime roundedTime = time.toTimeScale(timeScale);
-                if (abs(roundedTime - time) < roundingMargin || timeScale >= MediaTime::MaximumTimeScale)
-                    return roundedTime;
-
-                if (!WTF::safeMultiply(timeScale, 2, timeScale) || timeScale > MediaTime::MaximumTimeScale)
-                    timeScale = MediaTime::MaximumTimeScale;
-            }
-        };
 
         // 1.4 If timestampOffset is not 0, then run the following steps:
         if (m_timestampOffset) {
