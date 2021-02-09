@@ -219,10 +219,32 @@ static bool initializeProcessGPUMemoryLimits(size_t &criticalLimit, size_t &nonC
     return true;
 }
 
+struct MemoryPressureHandler::MemoryUsagePollerThreadContext
+    : public ThreadSafeRefCounted<MemoryPressureHandler::MemoryUsagePollerThreadContext>
+{
+    void stop()
+    {
+        LockHolder locker(m_lock);
+        m_shouldStop = true;
+        m_condition.notifyAll();
+    }
+
+    // returns false when should stop polling
+    bool sleep(const Seconds timeout)
+    {
+       LockHolder locker(m_lock);
+       return !m_condition.waitFor(m_lock, timeout, [this]() { return m_shouldStop; });
+    }
+
+    Lock m_lock;
+    bool m_shouldStop { false };
+    Condition m_condition;
+};
 
 MemoryPressureHandler::MemoryUsagePoller::MemoryUsagePoller()
 {
-    m_thread = Thread::create("WTF: MemoryPressureHandler", [this] {
+    m_context = adoptRef(new MemoryPressureHandler::MemoryUsagePollerThreadContext());
+    m_thread = Thread::create("WTF: MemoryPressureHandler", [this, context = m_context] {
         do {
             bool underMemoryPressure = false;
             bool critical = false;
@@ -253,13 +275,15 @@ MemoryPressureHandler::MemoryUsagePoller::MemoryUsagePoller()
                 return;
             }
 
-            sleep(s_memoryUsagePollerInterval);
+            if (!context->sleep(s_memoryUsagePollerInterval))
+                return;
         } while (true);
     });
 }
 
 MemoryPressureHandler::MemoryUsagePoller::~MemoryUsagePoller()
 {
+    m_context->stop();
     if (m_thread)
         m_thread->detach();
 }
