@@ -154,6 +154,11 @@ public:
         return counter.count();
     }
 
+    bool isEmpty() const
+    {
+        return m_root == nullptr;
+    }
+
     // See the class documentation for an explanation of this property.
     void setNeedsFullOrderingComparisons(bool needsFullOrderingComparisons)
     {

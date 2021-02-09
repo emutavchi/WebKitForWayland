@@ -589,7 +589,7 @@ protected:
     bool isMediaElement() const final { return true; }
 
 #if ENABLE(VIDEO_TRACK)
-    bool ignoreTrackDisplayUpdateRequests() const { return m_ignoreTrackDisplayUpdate > 0 || !m_textTracks || !m_cueTree.size(); }
+    bool ignoreTrackDisplayUpdateRequests() const { return m_ignoreTrackDisplayUpdate > 0 || !m_textTracks || m_cueTree.isEmpty(); }
     void beginIgnoringTrackDisplayUpdateRequests();
     void endIgnoringTrackDisplayUpdateRequests();
 #endif
