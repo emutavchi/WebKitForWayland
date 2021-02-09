@@ -199,7 +199,7 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
 
     GstMappedBuffer mappedKeyID(keyIDBuffer, GST_MAP_READ);
     if (!mappedKeyID) {
-        GST_ERROR_OBJECT(self, "Failed to map key ID buffer");
+        GST_ELEMENT_ERROR (self, STREAM, DECRYPT, ("Failed to map key ID buffer."), (NULL));
         return false;
     }
 
@@ -210,7 +210,7 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
         auto& cdmInstanceOpenCDM = downcast<WebCore::CDMInstanceOpenCDM>(*cdmInstance);
         priv->m_openCdmSession.reset(opencdm_get_system_session(cdmInstanceOpenCDM.ocdmSystem(), mappedKeyID.data(), mappedKeyID.size(), WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT.millisecondsAs<uint32_t>()));
         if (!priv->m_openCdmSession) {
-            GST_ERROR_OBJECT(self, "session is empty or unusable");
+            GST_ELEMENT_ERROR (self, STREAM, DECRYPT, ("Session is empty or unusable."), (NULL));
             return false;
         }
     }
@@ -218,7 +218,14 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
     // Decrypt cipher.
     GST_TRACE_OBJECT(self, "decrypting");
     if (int errorCode = opencdm_gstreamer_session_decrypt(priv->m_openCdmSession.get(), buffer, subSamplesBuffer, subSampleCount, ivBuffer, keyIDBuffer, 0)) {
-        GST_ERROR_OBJECT(self, "subsample decryption failed, error code %d", errorCode);
+        GUniquePtr<gchar> errorMessage (g_strdup_printf("Subsample decryption failed (code=%d)", errorCode));
+        gst_element_post_message(
+            GST_ELEMENT(self),
+            gst_message_new_element(
+                GST_OBJECT(self),
+                gst_structure_new("drm-decryption-error-encountered",
+                                  "error-message", G_TYPE_STRING, errorMessage.get(), NULL)));
+        GST_ELEMENT_ERROR(self, STREAM, DECRYPT, ("%s", errorMessage.get()), (NULL));
         return false;
     }
 

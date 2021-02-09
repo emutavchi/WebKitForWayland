@@ -2203,7 +2203,9 @@ void HTMLMediaElement::noneSupported()
 
     // 6.1 - Set the error attribute to a new MediaError object whose code attribute is set to
     // MEDIA_ERR_SRC_NOT_SUPPORTED.
-    m_error = MediaError::create(MediaError::MEDIA_ERR_SRC_NOT_SUPPORTED);
+    m_error = m_player
+        ? MediaError::create(MediaError::MEDIA_ERR_SRC_NOT_SUPPORTED, m_player->errorMessage())
+        : MediaError::create(MediaError::MEDIA_ERR_SRC_NOT_SUPPORTED);
 
     // 6.2 - Forget the media element's media-resource-specific text tracks.
     forgetResourceSpecificTracks();
@@ -2236,12 +2238,14 @@ void HTMLMediaElement::mediaLoadingFailedFatally(MediaPlayer::NetworkState error
     stopPeriodicTimers();
     m_loadState = WaitingForSource;
 
+    const auto getErrorMessage = [&] () { return m_player ? m_player->errorMessage() : emptyString(); };
+
     // 2 - Set the error attribute to a new MediaError object whose code attribute is
     // set to MEDIA_ERR_NETWORK/MEDIA_ERR_DECODE.
     if (error == MediaPlayer::NetworkError)
-        m_error = MediaError::create(MediaError::MEDIA_ERR_NETWORK);
+        m_error = MediaError::create(MediaError::MEDIA_ERR_NETWORK, getErrorMessage());
     else if (error == MediaPlayer::DecodeError)
-        m_error = MediaError::create(MediaError::MEDIA_ERR_DECODE);
+        m_error = MediaError::create(MediaError::MEDIA_ERR_DECODE, getErrorMessage());
     else
         ASSERT_NOT_REACHED();
 

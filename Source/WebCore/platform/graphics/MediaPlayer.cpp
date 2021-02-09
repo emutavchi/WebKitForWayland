@@ -1174,7 +1174,7 @@ void MediaPlayer::networkStateChanged()
     // let the next engine try.
     if (m_private->networkState() >= FormatError && m_private->readyState() < HaveMetadata) {
         client().mediaPlayerEngineFailedToLoad();
-        if (installedMediaEngines().size() > 1 && (m_contentType.isEmpty() || nextBestMediaEngine(m_currentMediaEngine))) {
+        if (installedMediaEngines().size() > 1 && !m_contentType.isEmpty() && nextBestMediaEngine(m_currentMediaEngine)) {
             m_reloadTimer.startOneShot(0_s);
             return;
         }
@@ -1615,6 +1615,11 @@ String convertEnumerationToString(MediaPlayerEnums::Preload enumerationValue)
     static_assert(static_cast<size_t>(MediaPlayerEnums::Auto) == 2, "MediaPlayerEnums::Auto is not 2 as expected");
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
     return values[static_cast<size_t>(enumerationValue)];
+}
+
+String MediaPlayer::errorMessage() const
+{
+    return m_private->errorMessage();
 }
 
 }

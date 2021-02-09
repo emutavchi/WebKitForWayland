@@ -44,13 +44,17 @@ public:
     };
 
     static Ref<MediaError> create(Code code) { return adoptRef(*new MediaError(code)); }
+    static Ref<MediaError> create(Code code, String message) { return adoptRef(*new MediaError(code, message)); }
 
     Code code() const { return m_code; }
+    String message() const { return m_message; }
 
 private:
     MediaError(Code code) : m_code(code) { }
+    MediaError(Code code, String message) : m_code(code), m_message(message) { }
 
     Code m_code;
+    String m_message;
 };
 
 } // namespace WebCore

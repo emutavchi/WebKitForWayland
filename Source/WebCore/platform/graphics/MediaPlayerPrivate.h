@@ -287,6 +287,7 @@ public:
     virtual void platformSuspend() { }
     virtual void platformResume() { }
     virtual bool shouldIgnoreIntrinsicSize() { return false; }
+    virtual String errorMessage() const { return {}; }
 };
 
 }

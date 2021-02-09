@@ -575,6 +575,9 @@ public:
 #endif
 
     bool shouldIgnoreIntrinsicSize();
+
+    String errorMessage() const;
+
 private:
     MediaPlayer(MediaPlayerClient&);
 
