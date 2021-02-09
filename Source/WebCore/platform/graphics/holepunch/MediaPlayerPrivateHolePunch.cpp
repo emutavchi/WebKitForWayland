@@ -33,6 +33,7 @@ static const FloatSize s_holePunchDefaultFrameSize(1280, 720);
 MediaPlayerPrivateHolePunch::MediaPlayerPrivateHolePunch(MediaPlayer* player)
     : m_player(player)
     , m_readyTimer(RunLoop::main(), this, &MediaPlayerPrivateHolePunch::notifyReadyState)
+    , m_networkState(MediaPlayer::NetworkState::Empty)
 #if USE(NICOSIA)
     , m_nicosiaLayer(Nicosia::ContentLayer::create(Nicosia::ContentLayerTextureMapperImpl::createFactory(*this)))
 #else
@@ -170,5 +171,27 @@ void MediaPlayerPrivateHolePunch::notifyReadyState()
     // Notify the ready state so the GraphicsLayer gets created.
     m_player->readyStateChanged();
 }
+
+MediaPlayer::NetworkState MediaPlayerPrivateHolePunch::networkState() const
+{
+    return m_networkState;
+}
+
+void MediaPlayerPrivateHolePunch::setNetworkState(MediaPlayer::NetworkState networkState)
+{
+    m_networkState = networkState;
+    m_player->networkStateChanged();
+}
+
+void MediaPlayerPrivateHolePunch::load(const String& loadUrl)
+{
+    if (m_player) {
+        auto mimeType = m_player->contentMIMEType();
+        if (mimeType.isEmpty() || !(mimeTypeCache().contains(mimeType))) {
+            setNetworkState(MediaPlayer::NetworkState::FormatError);
+        }
+    }
+}
+
 }
 #endif // USE(EXTERNAL_HOLEPUNCH)
