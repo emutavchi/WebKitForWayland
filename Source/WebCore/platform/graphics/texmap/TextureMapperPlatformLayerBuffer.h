@@ -67,6 +67,8 @@ public:
 
     class HolePunchClient {
     public:
+        HolePunchClient() = default;
+        virtual ~HolePunchClient() = default;
         virtual void setVideoRectangle(const IntRect&) = 0;
     };
 

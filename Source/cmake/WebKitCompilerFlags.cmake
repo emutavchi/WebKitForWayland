@@ -169,7 +169,7 @@ if (COMPILER_IS_GCC_OR_CLANG)
     option(ENABLE_ADDRESS_SANITIZER "Enable address sanitizer" OFF)
     if (ENABLE_ADDRESS_SANITIZER)
         WEBKIT_PREPEND_GLOBAL_COMPILER_FLAGS(-fno-omit-frame-pointer
-                                             -fno-optimize-sibling-calls)
+                                             -fno-optimize-sibling-calls -fstack-protector -pthread)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
         set(CMAKE_EXE_LINKER_FLAGS "-lpthread ${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
