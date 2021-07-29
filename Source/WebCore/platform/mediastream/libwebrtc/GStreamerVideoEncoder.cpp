@@ -344,6 +344,14 @@ gst_webrtc_video_encoder_class_init (GstWebrtcVideoEncoderClass * klass)
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
               G_PARAM_CONSTRUCT)));
 
+#if 1
+  // Register fake encoder to advertise h264 decoding capability
+  register_known_encoder (ENCODER_X264, "fakesink", "h264parse", "video/x-h264",
+      "video/x-h264,alignment=au,stream-format=byte-stream,profile=baseline",
+      setup_x264enc, "bitrate", set_bitrate_kbit_per_sec, "key-int-max");
+  return;
+#endif
+
   register_known_encoder (ENCODER_OMXH264, "omxh264enc", "h264parse",
       "video/x-h264",
       "video/x-h264,alignment=au,stream-format=byte-stream,profile=baseline",
