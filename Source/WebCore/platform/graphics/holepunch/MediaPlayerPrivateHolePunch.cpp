@@ -108,7 +108,8 @@ static HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeCache()
         return cache;
 
     const char* mimeTypes[] = {
-        "video/holepunch"
+        "video/holepunch",
+        "video/ave"
     };
 
     for (unsigned i = 0; i < (sizeof(mimeTypes) / sizeof(*mimeTypes)); ++i)
