@@ -4584,6 +4584,7 @@ void webkit_web_view_suspend(WebKitWebView *webView)
 
     auto viewStateFlags = webView->priv->view->viewState();
     viewStateFlags.add(WebCore::ActivityState::IsSuspended);
+    viewStateFlags.remove(WebCore::ActivityState::IsInWindow);
     webView->priv->view->setViewState(viewStateFlags);
 }
 
@@ -4593,6 +4594,7 @@ void webkit_web_view_resume(WebKitWebView *webView)
 
     auto viewStateFlags = webView->priv->view->viewState();
     viewStateFlags.remove(WebCore::ActivityState::IsSuspended);
+    viewStateFlags.add(WebCore::ActivityState::IsInWindow);
     webView->priv->view->setViewState(viewStateFlags);
 }
 
@@ -4608,7 +4610,7 @@ void webkit_web_view_hide(WebKitWebView *webView)
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
     auto viewStateFlags = webView->priv->view->viewState();
-    viewStateFlags.remove(WebCore::ActivityState::IsInWindow);
+    viewStateFlags.remove(WebCore::ActivityState::IsVisible);
     webView->priv->view->setViewState(viewStateFlags);
 }
 
@@ -4617,7 +4619,7 @@ void webkit_web_view_show(WebKitWebView *webView)
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
     auto viewStateFlags = webView->priv->view->viewState();
-    viewStateFlags.add(WebCore::ActivityState::IsInWindow);
+    viewStateFlags.add(WebCore::ActivityState::IsVisible);
     webView->priv->view->setViewState(viewStateFlags);
 }
 

@@ -385,26 +385,20 @@ RefPtr<DisplayRefreshMonitor> DrawingAreaCoordinatedGraphics::createDisplayRefre
 
 void DrawingAreaCoordinatedGraphics::activityStateDidChange(OptionSet<ActivityState::Flag> changed, ActivityStateChangeID, const Vector<CallbackID>&)
 {
-    if (changed & ActivityState::IsInWindow && !m_isViewSuspended) {
-        if (m_webPage.corePage()->isInWindow()) {
-            m_webPage.corePage()->resumeActiveDOMObjectsAndAnimations();
+    if (changed & ActivityState::IsVisible) {
+        if (m_webPage.isVisible())
             resumePainting();
-        } else {
+        else
             suspendPainting();
-            m_webPage.corePage()->suspendActiveDOMObjectsAndAnimations();
-        }
     }
 
     if (changed & ActivityState::IsSuspended) {
         if (m_isViewSuspended) {
-            // DOM objects will be disabled if the page is hidden. We need to activate them so the call to resumeAllMediaPlayback works.
             m_webPage.corePage()->resumeActiveDOMObjectsAndAnimations();
             m_webPage.corePage()->resumeAllMediaPlayback();
-            // If the page is visible, resume rendering, otherwise disable DOM objects so the videoSink rectangle is hidden.
-            if (m_webPage.corePage()->isInWindow())
+            // If the page is visible, resume rendering.
+            if (m_isPaintingSuspended && m_webPage.isVisible())
                 resumePainting();
-            else
-                m_webPage.corePage()->suspendActiveDOMObjectsAndAnimations();
             m_isViewSuspended = false;
         } else {
             suspendPainting();
