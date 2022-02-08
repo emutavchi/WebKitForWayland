@@ -768,9 +768,6 @@ void webKitMediaSrcPrepareInitialSeek(WebKitMediaSrc* source, double rate, const
     for (Stream* stream : source->priv->streams)
         stream->appsrcNeedDataFlag = false;
 
-    // The pending action will be performed in enabledAppsrcSeekData().
-    source->priv->appsrcSeekDataNextAction = MediaSourceSeekToTime;
-
     GUniquePtr<GstSegment> segment(gst_segment_new());
     segment->format = GST_FORMAT_TIME;
     gst_segment_do_seek(segment.get(), rate, GST_FORMAT_TIME,
