@@ -308,7 +308,7 @@ bool initializeGStreamerAndRegisterWebKitElements()
 
     static std::once_flag onceFlag;
     std::call_once(onceFlag, [] {
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) && !ENABLE(THUNDER)
         gst_element_register(nullptr, "webkitclearkey", GST_RANK_PRIMARY + 200, WEBKIT_TYPE_MEDIA_CK_DECRYPT);
 #endif
 
