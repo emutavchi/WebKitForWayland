@@ -126,6 +126,10 @@ bool Quirks::shouldAutoplayForArbitraryUserGesture() const
 
 bool Quirks::hasBrokenEncryptedMediaAPISupportQuirk() const
 {
+#if ENABLE(THUNDER)
+    return false;
+#endif
+
     if (!needsQuirks())
         return false;
 
