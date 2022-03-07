@@ -126,6 +126,9 @@ bool Quirks::shouldAutoplayForArbitraryUserGesture() const
 
 bool Quirks::hasBrokenEncryptedMediaAPISupportQuirk() const
 {
+#if ENABLE(THUNDER)
+    return false;
+#else
     if (!needsQuirks())
         return false;
 
@@ -142,6 +145,7 @@ bool Quirks::hasBrokenEncryptedMediaAPISupportQuirk() const
         || domain.endsWith("hulu.com");
 
     return m_hasBrokenEncryptedMediaAPISupportQuirk.value();
+#endif
 }
 
 bool Quirks::shouldDisableContentChangeObserverTouchEventAdjustment() const
