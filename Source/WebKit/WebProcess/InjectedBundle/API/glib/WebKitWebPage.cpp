@@ -64,6 +64,10 @@
 using namespace WebKit;
 using namespace WebCore;
 
+namespace WebCoreTestSupport {
+    void injectInternalsObject(JSContextRef);
+};
+
 enum {
     DOCUMENT_LOADED,
     SEND_REQUEST,
@@ -214,6 +218,7 @@ private:
 
     void didClearWindowObjectForFrame(WebPage&, WebFrame& frame, DOMWrapperWorld& world) override
     {
+        WebCoreTestSupport::injectInternalsObject(frame.jsContext());
         auto injectedWorld = InjectedBundleScriptWorld::getOrCreate(world);
         if (auto* wkWorld = webkitScriptWorldGet(injectedWorld.ptr()))
             webkitScriptWorldWindowObjectCleared(wkWorld, m_webPage, webkitFrameGetOrCreate(&frame));
