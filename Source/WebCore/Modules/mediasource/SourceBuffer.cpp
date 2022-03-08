@@ -1737,12 +1737,20 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
                     // then remove overlapped frame and any coded frames that depend on it from track buffer.
                     if (presentationTimestamp < removeWindowTimestamp)
                         erasedSamples.addSample(*iter->second);
+                } else {
+                    DEBUG_LOG(LOGIDENTIFIER,"Last decode time stamp is not valid. no overlap with sample containing PTS", presentationTimestamp);
                 }
 
                 // If track buffer contains timed text coded frames:
                 // Run the text splice frame algorithm and if a splice frame is returned, assign it to spliced timed text frame.
                 // FIXME: Add support for sample splicing.
             }
+            else {
+                DEBUG_LOG(LOGIDENTIFIER,"Last decode time stamp is not valid. no sample containing PTS", presentationTimestamp);
+            }
+        }
+        else {
+            DEBUG_LOG(LOGIDENTIFIER,"Last decode time stamp is valid, carry on");
         }
 
         // 1.15 Remove existing coded frames in track buffer:
@@ -1753,6 +1761,11 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
             auto iter_pair = trackBuffer.samples.presentationOrder().findSamplesBetweenPresentationTimes(presentationTimestamp, frameEndTimestamp);
             if (iter_pair.first != trackBuffer.samples.presentationOrder().end())
                 erasedSamples.addRange(iter_pair.first, iter_pair.second);
+            else {
+                DEBUG_LOG(LOGIDENTIFIER,"HighestPresentation timestamp is NOT valid. No samples between sample PTS and end timestamp");
+            }
+        } else {
+            DEBUG_LOG(LOGIDENTIFIER,"HighestPresentation timestamp is valid, ", trackBuffer.highestPresentationTimestamp);
         }
 
         // When appending media containing B-frames (media whose samples' presentation timestamps
@@ -1813,6 +1826,8 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
                 if (range.first != trackBuffer.samples.presentationOrder().end())
                     erasedSamples.addRange(range.first, range.second);
             } while(false);
+        } else if (trackBuffer.highestPresentationTimestamp.isValid()) {
+            DEBUG_LOG(LOGIDENTIFIER,"HighestPresentation timestamp is valid, no overlap found! ");
         }
 
         // 1.16 Remove decoding dependencies of the coded frames removed in the previous step:
@@ -1851,6 +1866,8 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
             erasedRanges.invert();
             trackBuffer.buffered.intersectWith(erasedRanges);
             setBufferedDirty(true);
+        } else {
+            DEBUG_LOG(LOGIDENTIFIER, "erasedSamples is empty");
         }
 
         // 1.17 If spliced audio frame is set:
