@@ -238,6 +238,13 @@ void GStreamerRegistryScanner::initialize()
         m_codecMap.add(AtomString("x-av1"), false);
     }
 
+    Vector<GstCapsWebKitMapping> mseCompatibleMapping = {
+        { AudioDecoder, "audio/x-ac3", { }, {"x-ac3", "ac-3", "ac3"} },
+        { AudioDecoder, "audio/x-eac3", {"audio/x-ac3"},  {"x-eac3", "ec3", "ec-3", "eac3"} },
+        { AudioDecoder, "audio/x-flac", {"audio/x-flac", "audio/flac"}, {"x-flac", "flac" } },
+    };
+    fillMimeTypeSetFromCapsMapping(factories, mseCompatibleMapping);
+
     if (m_isMediaSource)
         return;
 
@@ -245,10 +252,7 @@ void GStreamerRegistryScanner::initialize()
 
     Vector<GstCapsWebKitMapping> mapping = {
         {AudioDecoder, "audio/midi", {"audio/midi", "audio/riff-midi"}, { }},
-        {AudioDecoder, "audio/x-ac3", { }, { }},
         {AudioDecoder, "audio/x-dts", { }, { }},
-        {AudioDecoder, "audio/x-eac3", {"audio/x-ac3"}, { }},
-        {AudioDecoder, "audio/x-flac", {"audio/x-flac", "audio/flac"}, { }},
         {AudioDecoder, "audio/x-sbc", { }, { }},
         {AudioDecoder, "audio/x-sid", { }, { }},
         {AudioDecoder, "audio/x-speex", {"audio/speex", "audio/x-speex"}, { }},
