@@ -259,6 +259,8 @@ static bool checkShouldDelaySeek(GstStateChangeReturn getStateResult, GstState c
         return false;
     if (currentState == GST_STATE_READY && newState >= GST_STATE_PAUSED)
         return false;
+    if (GST_STATE_TRANSITION(currentState, newState) == GST_STATE_CHANGE_PAUSED_TO_PAUSED)
+        return false;
     return true;
 }
 
