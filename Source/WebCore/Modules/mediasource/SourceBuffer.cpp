@@ -978,7 +978,7 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
 #endif
 
     MediaTime rangeStart = MediaTime::zeroTime();
-    MediaTime rangeEnd = rangeStart + thirtySeconds;
+    MediaTime rangeEnd = std::max(m_buffered->ranges().start(0), rangeStart + thirtySeconds);
     while (rangeStart < maximumRangeEnd) {
         // 4. For each range in removal ranges, run the coded frame removal algorithm with start and
         // end equal to the removal range start and end timestamp respectively.
