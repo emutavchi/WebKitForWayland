@@ -312,7 +312,7 @@ void PlaybackPipeline::flush(AtomString trackId)
     GST_OBJECT_LOCK(m_webKitMediaSrc.get());
     Stream* stream = getStreamByTrackId(m_webKitMediaSrc.get(), trackId);
 
-    if (!stream || stream->lastEnqueuedTime.isInvalid()) {
+    if (!stream || stream->lastEnqueuedTime.isInvalid() || !m_webKitMediaSrc->priv->allTracksConfigured) {
         GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
         return;
     }
@@ -326,6 +326,12 @@ void PlaybackPipeline::flush(AtomString trackId)
 
     GST_DEBUG_OBJECT(appsrc, "flush: trackId=%s", trackId.string().utf8().data());
 
+    if (GST_STATE(pipeline()) < GST_STATE_PAUSED) {
+        // Flushing at early stage may result in playback failure with 'not-linked' reason.
+        // So, lets give pipeline some time to complete pre-roll before flushing this track.
+        gst_element_get_state(pipeline(), nullptr, nullptr, 100 * GST_MSECOND);
+    }
+
     gint64 position = GST_CLOCK_TIME_NONE;
     GRefPtr<GstQuery> query = adoptGRef(gst_query_new_position(GST_FORMAT_TIME));
     if (gst_element_query(pipeline(), query.get()))
@@ -334,12 +340,12 @@ void PlaybackPipeline::flush(AtomString trackId)
     GST_DEBUG_OBJECT(appsrc, "Position: %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
 
     if (static_cast<guint64>(position) == GST_CLOCK_TIME_NONE) {
-        GST_DEBUG("Can't determine position, avoiding flush");
-        return;
+        position = toGstUnsigned64Time(m_webKitMediaSrc->priv->mediaPlayerPrivate->currentMediaTime());
+        GST_DEBUG_OBJECT(appsrc, "Can't determine position, using cached one: %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
     }
 
-    double rate;
-    GstFormat format;
+    double rate = 1.0;
+    GstFormat format = GST_FORMAT_TIME;
     gint64 start = GST_CLOCK_TIME_NONE;
     gint64 stop = GST_CLOCK_TIME_NONE;
 
@@ -350,10 +356,8 @@ void PlaybackPipeline::flush(AtomString trackId)
     GST_DEBUG_OBJECT(appsrc, "segment: [%" GST_TIME_FORMAT ", %" GST_TIME_FORMAT "], rate: %f",
         GST_TIME_ARGS(start), GST_TIME_ARGS(stop), rate);
 
-    if (!gst_element_send_event(GST_ELEMENT(appsrc), gst_event_new_flush_start())) {
+    if (!gst_element_send_event(GST_ELEMENT(appsrc), gst_event_new_flush_start()))
         GST_WARNING("Failed to send flush-start event for trackId=%s", trackId.string().utf8().data());
-        return;
-    }
 
     GUniquePtr<GstSegment> segment(gst_segment_new());
     gst_segment_init(segment.get(), GST_FORMAT_TIME);
@@ -368,14 +372,11 @@ void PlaybackPipeline::flush(AtomString trackId)
     GST_DEBUG_OBJECT(appsrc, "Sending new seamless segment: [%" GST_TIME_FORMAT ", %" GST_TIME_FORMAT "], rate: %f",
         GST_TIME_ARGS(segment->start), GST_TIME_ARGS(segment->stop), segment->rate);
 
-    if (!gst_base_src_new_seamless_segment(GST_BASE_SRC(appsrc), segment->start, segment->stop, segment->start)) {
-        GST_WARNING("Failed to send seamless segment event for trackId=%s", trackId.string().utf8().data());
-    }
+    if (!gst_base_src_new_seamless_segment(GST_BASE_SRC(appsrc), segment->start, segment->stop, segment->start))
+        GST_WARNING("Failed to configure seamless segment event for trackId=%s", trackId.string().utf8().data());
 
-    if (!gst_element_send_event(GST_ELEMENT(appsrc), gst_event_new_flush_stop(false))) {
+    if (!gst_element_send_event(GST_ELEMENT(appsrc), gst_event_new_flush_stop(false)))
         GST_WARNING("Failed to send flush-stop event for trackId=%s", trackId.string().utf8().data());
-        return;
-    }
 
     GST_DEBUG_OBJECT(appsrc, "trackId=%s flushed", trackId.string().utf8().data());
 }
