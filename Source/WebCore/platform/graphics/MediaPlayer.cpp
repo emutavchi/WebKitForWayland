@@ -1230,7 +1230,14 @@ void MediaPlayer::networkStateChanged()
     if (m_private->networkState() >= MediaPlayer::NetworkState::FormatError && m_private->readyState() < MediaPlayer::ReadyState::HaveMetadata) {
         m_lastErrorMessage = m_private->errorMessage();
         client().mediaPlayerEngineFailedToLoad();
-        if (!m_activeEngineIdentifier && installedMediaEngines().size() > 1 && (m_contentType.isEmpty() || nextBestMediaEngine(m_currentMediaEngine))) {
+        bool shouldReload = !m_activeEngineIdentifier
+            && installedMediaEngines().size() > 1
+            && (m_contentType.isEmpty() || nextBestMediaEngine(m_currentMediaEngine))
+#if ENABLE(MEDIA_SOURCE)
+            && !m_mediaSource
+#endif
+            ;
+        if (shouldReload) {
             m_reloadTimer.startOneShot(0_s);
             return;
         }
