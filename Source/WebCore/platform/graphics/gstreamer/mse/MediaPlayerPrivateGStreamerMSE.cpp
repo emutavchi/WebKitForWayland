@@ -316,19 +316,6 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek(const MediaTime& position, float rat
     // Stop accepting new samples until actual seek is finished.
     webKitMediaSrcSetReadyForSamples(WEBKIT_MEDIA_SRC(m_source.get()), false);
 
-    // Correct seek time if it helps to fix a small gap.
-    if (!isTimeBuffered(seekTime)) {
-        // Look if a near future time (<0.1 sec.) is buffered and change the seek target time.
-        if (m_mediaSource) {
-            const MediaTime miniGap = MediaTime(1, 10);
-            MediaTime nearest = m_mediaSource->buffered()->nearest(seekTime);
-            if (nearest.isValid() && nearest > seekTime && (nearest - seekTime) <= miniGap && isTimeBuffered(nearest + miniGap)) {
-                GST_DEBUG_OBJECT(pipeline(), "[Seek] Changed the seek target time from %s to %s, a near point in the future", toString(seekTime).utf8().data(), toString(nearest).utf8().data());
-                seekTime = nearest;
-            }
-        }
-    }
-
     // Check if MSE has samples for requested time and defer actual seek if needed.
     if (!isTimeBuffered(seekTime)) {
         GST_DEBUG_OBJECT(pipeline(), "[Seek] Delaying the seek: MSE is not ready");
@@ -691,7 +678,9 @@ void MediaPlayerPrivateGStreamerMSE::asyncStateChangeDone()
 
 bool MediaPlayerPrivateGStreamerMSE::isTimeBuffered(const MediaTime &time) const
 {
-    bool result = m_mediaSource && m_mediaSource->buffered()->contain(time);
+    static NeverDestroyed<MediaTime> fudgeFactor(1, 10);
+    bool result = m_mediaSource && (abs(m_mediaSource->buffered()->nearest(time) - time) <= fudgeFactor);
+
     GST_DEBUG("Time %s buffered? %s", toString(time).utf8().data(), boolForPrinting(result));
     return result;
 }
