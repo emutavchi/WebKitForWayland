@@ -88,6 +88,7 @@ WEBKIT_OPTION_DEFINE(USE_SOUP2 "Whether to enable usage of Soup 2 instead of Sou
 # Private options specific to the WPE port.
 WEBKIT_OPTION_DEFINE(USE_GSTREAMER_HOLEPUNCH "Whether to enable GStreamer holepunch" PRIVATE OFF)
 WEBKIT_OPTION_DEFINE(USE_EXTERNAL_HOLEPUNCH "Whether to enable external holepunch" PRIVATE OFF)
+WEBKIT_OPTION_DEFINE(ENABLE_INSTANT_RATE_CHANGE "Whether to enable instant rate change" PRIVATE OFF)
 
 # LibWebRTC options
 WEBKIT_OPTION_DEFINE(ENABLE_WEBRTC_VPX "Whether to build libwebrtc with VPX" PRIVATE ON)

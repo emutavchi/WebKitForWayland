@@ -353,6 +353,10 @@ void PlaybackPipeline::flush(AtomString trackId)
     if (gst_element_query(pipeline(), query.get()))
         gst_query_parse_segment(query.get(), &rate, &format, &start, &stop);
 
+#if ENABLE(INSTANT_RATE_CHANGE)
+    rate = m_webKitMediaSrc->priv->mediaPlayerPrivate->rate();
+#endif
+
     GST_DEBUG_OBJECT(appsrc, "segment: [%" GST_TIME_FORMAT ", %" GST_TIME_FORMAT "], rate: %f",
         GST_TIME_ARGS(start), GST_TIME_ARGS(stop), rate);
 
