@@ -221,7 +221,7 @@ void GStreamerRegistryScanner::initialize()
     bool shouldAddMP4Container = false;
 
     auto h264DecoderAvailable = hasElementForMediaType(m_videoDecoderFactories, "video/x-h264, profile=(string){ constrained-baseline, baseline, high }", true);
-    if (h264DecoderAvailable && (!m_isMediaSource || hasElementForMediaType(m_videoParserFactories, "video/x-h264"))) {
+    if (h264DecoderAvailable) {
         shouldAddMP4Container = true;
         m_codecMap.add(AtomString("x-h264"), h264DecoderAvailable.isUsingHardware);
         m_codecMap.add(AtomString("avc*"), h264DecoderAvailable.isUsingHardware);
@@ -229,7 +229,7 @@ void GStreamerRegistryScanner::initialize()
     }
 
     auto h265DecoderAvailable = hasElementForMediaType(m_videoDecoderFactories, "video/x-h265", true);
-    if (h265DecoderAvailable && (!m_isMediaSource || hasElementForMediaType(m_videoParserFactories, "video/x-h265"))) {
+    if (h265DecoderAvailable) {
         shouldAddMP4Container = true;
         m_codecMap.add(AtomString("x-h265"), h265DecoderAvailable.isUsingHardware);
         m_codecMap.add(AtomString("hvc1*"), h265DecoderAvailable.isUsingHardware);
