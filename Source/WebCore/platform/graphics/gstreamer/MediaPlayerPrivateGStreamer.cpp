@@ -2990,7 +2990,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin(const URL& url, const String&
 #if USE(WESTEROS_SINK)
     // configure westeros sink before it allocates resources
     if (m_videoSink)
-        elementSetupCallback(this, m_videoSink.get(), m_pipeline.get());
+        configureElement(m_videoSink.get());
 #endif
 }
 
