@@ -1807,8 +1807,11 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
                     break;
 
                 MediaTime highestBufferedTime = trackBuffer.buffered.maximumBufferedTime();
-                MediaTime eraseBeginTime = trackBuffer.highestPresentationTimestamp - contiguousFrameTolerance;
+                MediaTime eraseBeginTime = trackBuffer.highestPresentationTimestamp;
                 MediaTime eraseEndTime = frameEndTimestamp - contiguousFrameTolerance;
+
+                if (eraseEndTime <= eraseBeginTime)
+                    break;
 
                 PresentationOrderSampleMap::iterator_range range;
                 if (highestBufferedTime - trackBuffer.highestPresentationTimestamp < trackBuffer.lastFrameDuration)
