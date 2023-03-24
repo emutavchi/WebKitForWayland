@@ -511,12 +511,13 @@ void MediaPlayerPrivateGStreamerMSE::updateStates()
     if (UNLIKELY(!m_pipeline || m_didErrorOccur))
         return;
 
+    const bool mseBuffering = !isTimeBuffered(currentMediaTime());
+
     MediaPlayer::NetworkState oldNetworkState = m_networkState;
     MediaPlayer::ReadyState oldReadyState = m_readyState;
     GstState state, pending;
 
     GstStateChangeReturn getStateResult = gst_element_get_state(m_pipeline.get(), &state, &pending, 250 * GST_NSECOND);
-    const bool mseBuffering = !isTimeBuffered(currentMediaTime());
 
     bool shouldUpdatePlaybackState = false;
     switch (getStateResult) {
