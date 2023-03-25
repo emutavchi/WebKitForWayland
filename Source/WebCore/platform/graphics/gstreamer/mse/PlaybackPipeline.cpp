@@ -363,6 +363,12 @@ void PlaybackPipeline::flush(AtomString trackId)
     if (!gst_element_send_event(GST_ELEMENT(appsrc), gst_event_new_flush_start()))
         GST_WARNING("Failed to send flush-start event for trackId=%s", trackId.string().utf8().data());
 
+#if USE(GSTREAMER_HOLEPUNCH)
+    GUniquePtr<GstSegment> segmentHolder(gst_segment_new());
+    GstSegment* segment = segmentHolder.get();
+    gst_segment_init(segment, GST_FORMAT_TIME);
+    gst_segment_do_seek(segment, rate, GST_FORMAT_TIME, GST_SEEK_FLAG_NONE, GST_SEEK_TYPE_SET, position, GST_SEEK_TYPE_SET, stop, nullptr);
+#else
     GRefPtr<GstElement> sink;
     switch(stream->type) {
     case MediaSourceStreamTypeGStreamer::Video:
@@ -386,6 +392,7 @@ void PlaybackPipeline::flush(AtomString trackId)
 
     ASSERT(GST_IS_BASE_SINK(sink.get()));
     GstSegment* segment = &GST_BASE_SINK_CAST(sink.get())->segment;
+#endif
 
     GRefPtr<GstPad> sinkPad = gst_element_get_static_pad(appsrc, "src");
     GRefPtr<GstPad> srcPad = sinkPad ? gst_pad_get_peer(sinkPad.get()) : nullptr;
