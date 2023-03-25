@@ -290,6 +290,14 @@ GstPadProbeReturn segmentFixerProbe(GstPad*, GstPadProbeInfo* info, gpointer use
 {
     GstEvent* event = GST_EVENT(info->data);
 
+    if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_FLUSH) {
+        if (GST_EVENT_TYPE(event) == GST_EVENT_FLUSH_START) {
+            GST_DEBUG("Segment fixer probe removed on flush start event: %" GST_PTR_FORMAT, event);
+            return GST_PAD_PROBE_REMOVE;
+        }
+        return GST_PAD_PROBE_OK;
+    }
+
     if (GST_EVENT_TYPE(event) != GST_EVENT_SEGMENT)
         return GST_PAD_PROBE_OK;
 
@@ -300,7 +308,6 @@ GstPadProbeReturn segmentFixerProbe(GstPad*, GstPadProbeInfo* info, gpointer use
     gst_segment_copy_into(newSegment, segment);
 
     GST_TRACE("segment fixed in event %" GST_PTR_FORMAT, event);
-
 
     return GST_PAD_PROBE_REMOVE;
 }
@@ -397,7 +404,7 @@ void PlaybackPipeline::flush(AtomString trackId)
     GRefPtr<GstPad> sinkPad = gst_element_get_static_pad(appsrc, "src");
     GRefPtr<GstPad> srcPad = sinkPad ? gst_pad_get_peer(sinkPad.get()) : nullptr;
     if (srcPad)
-        gst_pad_add_probe(srcPad.get(), GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, segmentFixerProbe, gst_segment_copy(segment), (GDestroyNotify) gst_segment_free);
+        gst_pad_add_probe(srcPad.get(), static_cast<GstPadProbeType>(GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM | GST_PAD_PROBE_TYPE_EVENT_FLUSH), segmentFixerProbe, gst_segment_copy(segment), (GDestroyNotify) gst_segment_free);
 
     GST_DEBUG_OBJECT(appsrc, "Sending new segment event");
 
