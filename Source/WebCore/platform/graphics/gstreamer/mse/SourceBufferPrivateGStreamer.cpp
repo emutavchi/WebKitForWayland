@@ -128,7 +128,7 @@ void SourceBufferPrivateGStreamer::flush(const AtomString& trackId)
     ASSERT(isMainThread());
 
     // This is only for on-the-fly reenqueues after appends. When seeking, the seek will do its own flush.
-    if (!m_playerPrivate.seeking())
+    if (!m_playerPrivate.seeking() || m_playerPrivate.gstSeekCompleted())
         m_playerPrivate.playbackPipeline()->flush(trackId);
 }
 
