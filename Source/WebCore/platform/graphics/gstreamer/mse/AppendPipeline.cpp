@@ -543,6 +543,7 @@ void AppendPipeline::appsinkNewSample(GRefPtr<GstSample>&& sample)
 
     GstSegment* segment = gst_sample_get_segment(sample.get());
     auto mediaSample = WebCore::MediaSampleGStreamer::create(WTFMove(sample), m_presentationSize, trackId());
+    mediaSample->setSerialNum(m_serialNum);
 
     if (segment && (segment->time || segment->start)) {
         // MP4 has the concept of edit lists, where some buffer time needs to be offsetted, often very slightly,
@@ -683,6 +684,8 @@ void AppendPipeline::pushNewBuffer(GRefPtr<GstBuffer>&& buffer)
         GST_ERROR_OBJECT(m_pipeline.get(), "Failed to push data buffer into appsrc.");
         ASSERT_NOT_REACHED();
     }
+
+    ++m_serialNum;
 
     // Push an additional empty buffer that marks the end of the append.
     // This buffer is detected and consumed by appsrcEndOfAppendCheckerProbe(), which uses it to signal the successful

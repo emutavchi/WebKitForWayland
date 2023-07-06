@@ -202,7 +202,7 @@ Ref<MediaSample> MediaSampleGStreamer::createNonDisplayingCopy() const
 
 void MediaSampleGStreamer::dump(PrintStream& out) const
 {
-    out.print("{PTS(", presentationTime(), "), DTS(", decodeTime(), "), duration(", duration(), "), flags(");
+    out.print("{Serial(", m_serialNum, "), PTS(", presentationTime(), "), DTS(", decodeTime(), "), duration(", duration(), "), flags(");
 
     bool anyFlags = false;
     auto appendFlag = [&out, &anyFlags](const char* flagName) {

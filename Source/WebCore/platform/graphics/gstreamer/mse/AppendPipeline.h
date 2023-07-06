@@ -155,6 +155,7 @@ private:
     GRefPtr<GstBuffer> m_pendingBuffer;
 
     Lock m_pipelineConstructionLock;
+    int m_serialNum { 0 };
 };
 
 } // namespace WebCore.

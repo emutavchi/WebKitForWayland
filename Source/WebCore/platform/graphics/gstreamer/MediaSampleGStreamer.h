@@ -56,6 +56,7 @@ public:
     PlatformSample platformSample() override;
     void dump(PrintStream&) const override;
     RefPtr<JSC::Uint8ClampedArray> getRGBAImageData() const final;
+    void setSerialNum(int num) { m_serialNum = num; }
 
 protected:
     MediaSampleGStreamer(GRefPtr<GstSample>&&, const FloatSize& presentationSize, const AtomString& trackId);
@@ -72,6 +73,7 @@ private:
     GRefPtr<GstSample> m_sample;
     FloatSize m_presentationSize;
     MediaSample::SampleFlags m_flags { MediaSample::IsSync };
+    int m_serialNum { -1 };
 };
 
 } // namespace WebCore.
