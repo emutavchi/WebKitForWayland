@@ -53,7 +53,7 @@ void UIScriptControllerWPE::doAsyncTask(JSValueRef callback)
 
 void UIScriptControllerWPE::setContinuousSpellCheckingEnabled(bool enabled)
 {
-    WebKit::TextChecker::setContinuousSpellCheckingEnabled(enabled);
+//    WebKit::TextChecker::setContinuousSpellCheckingEnabled(enabled);
 }
 
 void UIScriptControllerWPE::copyText(JSStringRef)

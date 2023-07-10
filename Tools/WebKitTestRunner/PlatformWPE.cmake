@@ -32,7 +32,7 @@ list(APPEND WebKitTestRunner_LIBRARIES
     ${GLIB_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
     ${WPEBACKEND_FDO_LIBRARIES}
-    WPEToolingBackends
+#    WPEToolingBackends
 )
 
 set(WebKitTestRunnerInjectedBundle_LIBRARIES

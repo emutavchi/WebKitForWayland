@@ -25,12 +25,32 @@
 
 #pragma once
 
+#if defined(WTF_PLATFORM_WESTEROS) && WTF_PLATFORM_WESTEROS
+#include <wpe/wpe.h>
+#else
 #include "ViewBackend.h"
+#endif
 #include <cairo.h>
 #include <glib.h>
 #include <unordered_map>
 
 namespace WPEToolingBackends {
+
+#if PLATFORM(WESTEROS)
+
+class HeadlessViewBackend {
+public:
+    HeadlessViewBackend(uint32_t width, uint32_t height) { m_backend = wpe_view_backend_create();  }
+    virtual ~HeadlessViewBackend() { wpe_view_backend_destroy(m_backend);  }
+    cairo_surface_t* createSnapshot() { return nullptr; }
+    struct wpe_view_backend* backend() const { return m_backend; }
+    void addActivityState(uint32_t flags) { wpe_view_backend_add_activity_state(backend(), flags); }
+    void removeActivityState(uint32_t flags) { wpe_view_backend_remove_activity_state(backend(), flags); }
+private:
+    struct wpe_view_backend* m_backend { nullptr };
+};
+
+#else
 
 class HeadlessViewBackend final : public ViewBackend {
 public:
@@ -67,5 +87,7 @@ private:
     GSource* m_updateSource { nullptr };
     gint64 m_frameRate { G_USEC_PER_SEC / 60 };
 };
+
+#endif
 
 } // namespace WPEToolingBackends

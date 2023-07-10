@@ -23,6 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define WPE_ENABLE_XKB 1
 #include "config.h"
 #include "EventSenderProxy.h"
 
@@ -313,6 +314,7 @@ void EventSenderProxy::keyDown(WKStringRef keyRef, WKEventModifiers wkModifiers,
     free(entries);
 }
 
+#if ENABLE(TOUCH_EVENTS)
 void EventSenderProxy::addTouchPoint(int x, int y)
 {
     struct wpe_input_touch_event_raw rawEvent { wpe_input_touch_event_type_down, static_cast<uint32_t>(m_time), static_cast<int>(m_touchEvents.size()), static_cast<int32_t>(x), static_cast<int32_t>(y) };
@@ -409,5 +411,6 @@ void EventSenderProxy::cancelTouchPoint(int)
 {
     notImplemented();
 }
+#endif
 
 } // namespace WTR

@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#define WPE_ENABLE_XKB 1
 #include "WebViewTest.h"
 
 #include <wpe/wpe.h>

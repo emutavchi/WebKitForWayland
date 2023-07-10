@@ -37,6 +37,7 @@ namespace WebCore {
 static const Seconds clientDataBufferingTimerThrottleDelay { 100_ms };
 
 #if !RELEASE_LOG_DISABLED
+String convertEnumerationToString(PlatformMediaSession::State state)  __attribute__((weak));
 String convertEnumerationToString(PlatformMediaSession::State state)
 {
     static const NeverDestroyed<String> values[] = {

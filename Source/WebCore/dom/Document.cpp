@@ -8210,6 +8210,8 @@ void Document::didLogMessage(const WTFLogChannel& channel, WTFLogLevel level, Ve
     if (messageSource == MessageSource::Other)
         return;
 
+    return;
+
     m_logMessageTaskQueue.enqueueTask([this, level, messageSource, logMessages = WTFMove(logMessages)]() mutable {
         if (!this->page())
             return;
