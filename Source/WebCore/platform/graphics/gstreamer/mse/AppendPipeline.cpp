@@ -852,16 +852,16 @@ bool AppendPipeline::recycleTrackForPad(GstPad* demuxerSrcPad)
         return false;
     }
 
+    if (matchingTrack->parser)
+        gst_element_set_state(matchingTrack->parser.get(), GST_STATE_NULL);
+    gst_element_set_state(matchingTrack->appsink.get(), GST_STATE_NULL);
+
     GRefPtr<GstCaps> matchingTrackCaps = adoptGRef(gst_pad_get_current_caps(matchingTrack->entryPad.get()));
     if (!matchingTrack->isLinked() && (!matchingTrackCaps || gst_caps_can_intersect(parsedCaps.get(), matchingTrackCaps.get())))
         linkPadWithTrack(demuxerSrcPad, *matchingTrack);
     else {
         // Unlink from old track and link to new track, by 1. stopping parser/sink, 2. unlinking
         // demuxer from track, 3. restarting parser/sink.
-        if (matchingTrack->parser)
-            gst_element_set_state(matchingTrack->parser.get(), GST_STATE_NULL);
-        gst_element_set_state(matchingTrack->appsink.get(), GST_STATE_NULL);
-
         auto peer = adoptGRef(gst_pad_get_peer(matchingTrack->entryPad.get()));
         if (peer.get() != demuxerSrcPad) {
             if (peer) {
@@ -879,11 +879,12 @@ bool AppendPipeline::recycleTrackForPad(GstPad* demuxerSrcPad)
             matchingTrack->presentationSize = presentationSize;
         } else
             GST_DEBUG_OBJECT(pipeline(), "%s track pads match, nothing to re-link", matchingTrack->trackId.string().ascii().data());
-
-        gst_element_set_state(matchingTrack->appsink.get(), GST_STATE_PLAYING);
-        if (matchingTrack->parser)
-            gst_element_set_state(matchingTrack->parser.get(), GST_STATE_PLAYING);
     }
+
+    gst_element_set_state(matchingTrack->appsink.get(), GST_STATE_PLAYING);
+    if (matchingTrack->parser)
+        gst_element_set_state(matchingTrack->parser.get(), GST_STATE_PLAYING);
+
     return true;
 }
 
