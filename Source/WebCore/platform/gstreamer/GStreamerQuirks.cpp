@@ -27,10 +27,12 @@
 #include "GStreamerHolePunchQuirkBcmNexus.h"
 #include "GStreamerHolePunchQuirkFake.h"
 #include "GStreamerHolePunchQuirkWesteros.h"
+#include "GStreamerHolePunchQuirkRialto.h"
 #include "GStreamerQuirkAmLogic.h"
 #include "GStreamerQuirkBcmNexus.h"
 #include "GStreamerQuirkBroadcom.h"
 #include "GStreamerQuirkRealtek.h"
+#include "GStreamerQuirkRialto.h"
 #include "GStreamerQuirkWesteros.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/OptionSet.h>
@@ -106,6 +108,8 @@ GStreamerQuirksManager::GStreamerQuirksManager(bool isForTesting, bool loadQuirk
                 quirk = WTF::makeUnique<GStreamerQuirkRealtek>();
             else if (WTF::equalLettersIgnoringASCIICase(identifier, "westeros"_s))
                 quirk = WTF::makeUnique<GStreamerQuirkWesteros>();
+            else if (WTF::equalLettersIgnoringASCIICase(identifier, "rialto"_s))
+                quirk = WTF::makeUnique<GStreamerQuirkRialto>();
             else {
                 GST_WARNING("Unknown quirk requested: %s. Skipping", identifier.ascii().data());
                 continue;
@@ -146,6 +150,8 @@ GStreamerQuirksManager::GStreamerQuirksManager(bool isForTesting, bool loadQuirk
         m_holePunchQuirk = WTF::makeUnique<GStreamerHolePunchQuirkWesteros>();
     else if (WTF::equalLettersIgnoringASCIICase(holePunchQuirk, "fake"_s))
         m_holePunchQuirk = WTF::makeUnique<GStreamerHolePunchQuirkFake>();
+    else if (WTF::equalLettersIgnoringASCIICase(holePunchQuirk, "rialto"_s))
+        m_holePunchQuirk = WTF::makeUnique<GStreamerHolePunchQuirkRialto>();
     else
         GST_WARNING("HolePunch quirk %s un-supported.", holePunchQuirk.ascii().data());
 }
