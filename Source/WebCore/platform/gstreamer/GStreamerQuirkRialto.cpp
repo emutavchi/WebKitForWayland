@@ -41,6 +41,13 @@ GStreamerQuirkRialto::GStreamerQuirkRialto()
     GST_DEBUG_CATEGORY_INIT(webkit_rialto_quirks_debug, "webkitquirksrialto", 0, "WebKit Rialto Quirks");
 }
 
+GstElement* GStreamerQuirkRialto::createAudioSink()
+{
+    auto sink = makeGStreamerElement("rialtomseaudiosink", nullptr);
+    RELEASE_ASSERT_WITH_MESSAGE(sink, "rialtomseaudiosink should be available in the system but it is not");
+    return sink;
+}
+
 GstElement* GStreamerQuirkRialto::createWebAudioSink()
 {
     auto sink = makeGStreamerElement("rialtowebaudiosink", nullptr);

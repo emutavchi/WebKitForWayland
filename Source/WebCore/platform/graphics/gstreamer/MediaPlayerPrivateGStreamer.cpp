@@ -1317,7 +1317,7 @@ GstElement* MediaPlayerPrivateGStreamer::createAudioSink()
     // If audio is being controlled by an another pipeline, creating sink here may interfere with
     // audio playback. Instead, check if an audio sink was setup in handleMessage and use it.
     if (quirksManager.isEnabled())
-        return nullptr;
+        return quirksManager.createAudioSink();
 
     // For platform specific audio sinks, they need to be properly upranked so that they get properly autoplugged.
 

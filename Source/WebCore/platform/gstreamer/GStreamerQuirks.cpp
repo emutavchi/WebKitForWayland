@@ -161,6 +161,20 @@ bool GStreamerQuirksManager::isEnabled() const
     return !m_quirks.isEmpty();
 }
 
+GstElement* GStreamerQuirksManager::createAudioSink()
+{
+    for (const auto& quirk : m_quirks) {
+        auto* sink = quirk->createAudioSink();
+        if (!sink)
+            continue;
+
+        GST_DEBUG("Using AudioSink from quirk %s : %" GST_PTR_FORMAT, quirk->identifier(), sink);
+        return sink;
+    }
+
+    return nullptr;
+}
+
 GstElement* GStreamerQuirksManager::createWebAudioSink()
 {
     for (const auto& quirk : m_quirks) {

@@ -36,6 +36,7 @@ public:
     GStreamerQuirkRialto();
     const char* identifier() final { return "Rialto"; }
 
+    GstElement* createAudioSink() final;
     GstElement* createWebAudioSink() final;
     std::optional<bool> isHardwareAccelerated(GstElementFactory*) final;
     bool shouldParseIncomingLibWebRTCBitStream() const final { return false; }
