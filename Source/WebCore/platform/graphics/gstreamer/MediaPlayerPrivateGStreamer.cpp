@@ -4121,8 +4121,10 @@ GstElement* MediaPlayerPrivateGStreamer::createVideoSink()
             g_value_unset(&value);
         }
 
-        uint64_t maxLateness = 100 * GST_MSECOND;
-        g_object_set(sink, "max-lateness", maxLateness, nullptr);
+        if (gstObjectHasProperty(sink, "max-lateness")) {
+            uint64_t maxLateness = 100 * GST_MSECOND;
+            g_object_set(sink, "max-lateness", maxLateness, nullptr);
+        }
     });
 
     if (!m_player->isVideoPlayer()) {
