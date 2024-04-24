@@ -36,6 +36,7 @@ public:
     GStreamerQuirkRialto();
     const char* identifier() final { return "Rialto"; }
 
+    void configureElement(GstElement*, const OptionSet<ElementRuntimeCharacteristics>&) final;
     GstElement* createAudioSink() final;
     GstElement* createWebAudioSink() final;
     std::optional<bool> isHardwareAccelerated(GstElementFactory*) final;
@@ -43,6 +44,7 @@ public:
     unsigned getAdditionalPlaybinFlags() const { return getGstPlayFlag("text") | getGstPlayFlag("native-audio") | getGstPlayFlag("native-video"); }
 
 private:
+    GRefPtr<GstCaps> m_sinkCaps;
 };
 
 } // namespace WebCore

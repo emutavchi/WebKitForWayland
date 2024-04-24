@@ -39,6 +39,43 @@ GST_DEBUG_CATEGORY_STATIC(webkit_rialto_quirks_debug);
 GStreamerQuirkRialto::GStreamerQuirkRialto()
 {
     GST_DEBUG_CATEGORY_INIT(webkit_rialto_quirks_debug, "webkitquirksrialto", 0, "WebKit Rialto Quirks");
+
+    std::array<const char *, 2> rialtoSinks = {"rialtomsevideosink", "rialtomseaudiosink"};
+
+    for (const auto* sink : rialtoSinks) {
+        auto sinkFactory = adoptGRef(gst_element_factory_find(sink));
+        if (UNLIKELY(!sinkFactory))
+            continue;
+
+        gst_object_unref(gst_plugin_feature_load(GST_PLUGIN_FEATURE(sinkFactory.get())));
+        for (auto* t = gst_element_factory_get_static_pad_templates(sinkFactory.get()); t; t = g_list_next(t)) {
+            auto* padtemplate = static_cast<GstStaticPadTemplate*>(t->data);
+            if (padtemplate->direction != GST_PAD_SINK)
+                continue;
+            auto *templateCaps = gst_static_caps_get(&padtemplate->static_caps);
+            if (!templateCaps)
+                continue;
+            if (gst_caps_is_empty(templateCaps) || gst_caps_is_any(templateCaps)) {
+                gst_caps_unref(templateCaps);
+                continue;
+            }
+            if (m_sinkCaps)
+                m_sinkCaps = adoptGRef(gst_caps_merge(m_sinkCaps.leakRef(), templateCaps));
+            else
+                m_sinkCaps = adoptGRef(templateCaps);
+        }
+    }
+}
+
+void GStreamerQuirkRialto::configureElement(GstElement* element, const OptionSet<ElementRuntimeCharacteristics>&)
+{
+    if (!g_strcmp0(G_OBJECT_TYPE_NAME(G_OBJECT(element)), "GstURIDecodeBin3")) {
+        GRefPtr<GstCaps> defaultCaps;
+        g_object_get(element, "caps", &defaultCaps.outPtr(), nullptr);
+        defaultCaps = adoptGRef(gst_caps_merge(gst_caps_ref(m_sinkCaps.get()), defaultCaps.leakRef()));
+        GST_INFO("Setting stop caps to %" GST_PTR_FORMAT, defaultCaps.get());
+        g_object_set(element, "caps", defaultCaps.get(), nullptr);
+    }
 }
 
 GstElement* GStreamerQuirkRialto::createAudioSink()
