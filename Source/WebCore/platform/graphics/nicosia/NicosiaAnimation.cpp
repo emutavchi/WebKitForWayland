@@ -223,6 +223,9 @@ void Animation::apply(ApplicationResult& applicationResults, MonotonicTime time)
     // Even when m_state == AnimationState::Stopped && !m_fillsForwards, we should calculate the last value to avoid a flash.
     // CoordinatedGraphicsScene will soon remove the stopped animation and update the value instead of this function.
 
+    if (auto* impl = m_name.impl())
+        impl->moveToThisThread();
+
     Seconds totalRunningTime = computeTotalRunningTime(time);
     double normalizedValue = normalizedAnimationValue(totalRunningTime.seconds(), m_duration, m_direction, m_iterationCount);
 

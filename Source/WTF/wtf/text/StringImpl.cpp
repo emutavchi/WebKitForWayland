@@ -40,6 +40,7 @@
 #include <unistd.h>
 #include <wtf/DataLog.h>
 #endif
+#include <wtf/RunLoop.h>
 
 namespace WTF {
 
@@ -1700,6 +1701,59 @@ bool equalIgnoringNullity(const UChar* a, size_t aLength, StringImpl* b)
         return true;
     }
     return !memcmp(a, b->characters16(), b->length() * sizeof(UChar));
+}
+
+void StringImpl::applyRefDerefThreadingCheck() const
+{
+    if (isStatic())
+        return;
+
+    if ((m_hashAndFlags & s_areThreadingChecksDisabled) == s_areThreadingChecksDisabled)
+        return;
+
+    if (hasOneRef()) {
+        // Likely an ownership transfer across threads that may be safe.
+        if (isMainThread())
+            m_hashAndFlags |= s_isOwnedByMainThread;
+        else
+            m_hashAndFlags &= ~s_isOwnedByMainThread;
+    } else {
+        // If you hit this assertion, it means that the RefCounted object was ref/deref'd
+        // from both the main thread and another in a way that is likely concurrent and unsafe.
+        // Derive from ThreadSafeRefCounted and make sure the destructor is safe on threads
+        // that call deref, or ref/deref from a single thread.
+
+        bool isOwnedByMainThread = (m_hashAndFlags & s_isOwnedByMainThread) == s_isOwnedByMainThread;
+
+        if (isOwnedByMainThread != isMainThread()) {
+            WTFLogAlways("Unsafe to ref/deref from different threads.%s string is owned by main (%s, %p) != current is main thread? (%s, %p). flags 0x%x, length = %u, ref count = %d, str = '%s'",
+                         isAtom() ? " atom" : "",
+                         isOwnedByMainThread ? "y" : "n",
+                         &RunLoop::main(),
+                         isMainThread() ? "y" : "n",
+                         &RunLoop::current(),
+                         m_hashAndFlags & ((1u << s_flagCount) - 1),
+                         length(), refCount(),
+                         utf8().data());
+            CRASH();
+        }
+    }
+}
+
+void StringImpl::disableThreadingChecks()
+{
+    m_hashAndFlags |= s_areThreadingChecksDisabled;
+}
+
+void StringImpl::moveToThisThread()
+{
+    if (!hasOneRef()) {
+        WTFLogAlways("Potentially unsafe StringImpl::moveToThisThread, string has multiple refs. Ref count is %u, str %s", refCount(), utf8().data());
+    }
+    if (isMainThread())
+        m_hashAndFlags |= s_isOwnedByMainThread;
+    else
+        m_hashAndFlags &= ~s_isOwnedByMainThread;
 }
 
 } // namespace WTF

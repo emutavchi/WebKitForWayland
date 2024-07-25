@@ -93,6 +93,9 @@ public:
         constexpr auto dataString = "data:"_s;
         ASSERT(url.string().startsWith(dataString));
 
+        if (auto* impl = url.string().impl())
+            impl->moveToThisThread();
+
         size_t headerStart = dataString.length();
         size_t headerEnd = url.string().find(',', headerStart);
         if (headerEnd == notFound)
@@ -200,6 +203,14 @@ void decode(const URL& url, const ScheduleContext& scheduleContext, Mode mode, D
 #endif
 
         auto callCompletionHandler = [result = WTFMove(result), completionHandler = WTFMove(decodeTask->completionHandler)]() mutable {
+            if (result) {
+                if (auto* impl = result->mimeType.impl())
+                    impl->moveToThisThread();
+                if (auto* impl = result->charset.impl())
+                    impl->moveToThisThread();
+                if (auto* impl = result->contentType.impl())
+                    impl->moveToThisThread();
+            }
             completionHandler(WTFMove(result));
         };
 

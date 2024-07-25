@@ -697,6 +697,16 @@ static void webKitWebSrcMakeRequest(WebKitWebSrc* src, DataMutexLocker<WebKitWeb
     RunLoop::main().dispatch([protector = WTF::ensureGRef(src), request = WTFMove(request), requestNumber = members->requestNumber] {
         WebKitWebSrcPrivate* priv = protector->priv;
         DataMutexLocker members { priv->dataMutex };
+
+        if (auto* impl = request.url().string().impl())
+            impl->moveToThisThread();
+        if (auto* impl = request.httpMethod().impl())
+            impl->moveToThisThread();
+        for (auto& header : request.httpHeaderFields()) {
+            if (auto* impl = header.value.impl())
+                impl->moveToThisThread();
+        }
+
         // Ignore this task (not making any HTTP request) if by now WebKitWebSrc streaming thread is already waiting
         // for a different request. There is no point anymore in sending this one.
         if (members->requestNumber != requestNumber) {

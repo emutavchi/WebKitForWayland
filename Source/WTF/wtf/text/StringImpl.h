@@ -42,6 +42,7 @@
 #include <wtf/text/StringHasher.h>
 #include <wtf/text/UTF8ConversionError.h>
 #include <wtf/unicode/UTF8Conversion.h>
+#include <wtf/MainThread.h>
 
 #if USE(CF)
 typedef const struct __CFString * CFStringRef;
@@ -242,6 +243,8 @@ private:
     StringImpl(const UChar*, unsigned length, Ref<StringImpl>&&);
 
 public:
+    static constexpr const unsigned s_isOwnedByMainThread = 1u << (s_flagStringKindCount + 2);
+    static constexpr const unsigned s_areThreadingChecksDisabled = 1u << (s_flagStringKindCount + 3);
     WTF_EXPORT_PRIVATE static void destroy(StringImpl*);
 
     WTF_EXPORT_PRIVATE static Ref<StringImpl> create(const UChar*, unsigned length);
@@ -355,6 +358,9 @@ public:
     size_t refCount() const { return m_refCount / s_refCountIncrement; }
     bool hasOneRef() const { return m_refCount == s_refCountIncrement; }
     bool hasAtLeastOneRef() const { return m_refCount; } // For assertions.
+    void applyRefDerefThreadingCheck() const;
+    void disableThreadingChecks();
+    void moveToThisThread();
 
     void ref();
     void deref();
@@ -791,7 +797,7 @@ inline StringImplShape::StringImplShape(unsigned refCount, unsigned length, cons
     : m_refCount(refCount)
     , m_length(length)
     , m_data8(data8)
-    , m_hashAndFlags(hashAndFlags)
+    , m_hashAndFlags(hashAndFlags | (isMainThread() ? StringImpl::s_isOwnedByMainThread : 0))
 {
 }
 
@@ -799,7 +805,7 @@ inline StringImplShape::StringImplShape(unsigned refCount, unsigned length, cons
     : m_refCount(refCount)
     , m_length(length)
     , m_data16(data16)
-    , m_hashAndFlags(hashAndFlags)
+    , m_hashAndFlags(hashAndFlags | (isMainThread() ? StringImpl::s_isOwnedByMainThread : 0))
 {
 }
 
@@ -1115,6 +1121,8 @@ inline void StringImpl::deref()
     if (isStatic())
         return;
 #endif
+
+    applyRefDerefThreadingCheck();
 
     unsigned tempRefCount = m_refCount - s_refCountIncrement;
     if (!tempRefCount) {

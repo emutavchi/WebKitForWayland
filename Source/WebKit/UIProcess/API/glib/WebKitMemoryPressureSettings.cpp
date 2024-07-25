@@ -20,6 +20,7 @@
 #include "config.h"
 #include "WebKitMemoryPressureSettings.h"
 
+#include "WebKitInitialize.h"
 #include <wtf/MemoryPressureHandler.h>
 
 /**
@@ -66,6 +67,8 @@ G_DEFINE_BOXED_TYPE(WebKitMemoryPressureSettings, webkit_memory_pressure_setting
  */
 WebKitMemoryPressureSettings* webkit_memory_pressure_settings_new()
 {
+    WebKit::webkitInitialize();
+
     WebKitMemoryPressureSettings* memoryPressureSettings = static_cast<WebKitMemoryPressureSettings*>(fastMalloc(sizeof(WebKitMemoryPressureSettings)));
     new (memoryPressureSettings) WebKitMemoryPressureSettings;
 

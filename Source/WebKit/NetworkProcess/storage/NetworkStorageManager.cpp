@@ -183,6 +183,16 @@ NetworkStorageManager::NetworkStorageManager(PAL::SessionID sessionID, IPC::Conn
     ASSERT(RunLoop::isMain());
 
     m_queue->dispatch([this, protectedThis = Ref { *this }, path = path.isolatedCopy(), customLocalStoragePath = crossThreadCopy(customLocalStoragePath), customIDBStoragePath = crossThreadCopy(customIDBStoragePath), customCacheStoragePath = crossThreadCopy(customCacheStoragePath), shouldUseCustomPaths]() mutable {
+
+        if (auto* impl = path.impl())
+            impl->moveToThisThread();
+        if (auto* impl = customLocalStoragePath.impl())
+            impl->moveToThisThread();
+        if (auto* impl = customIDBStoragePath.impl())
+            impl->moveToThisThread();
+        if (auto* impl = customCacheStoragePath.impl())
+            impl->moveToThisThread();
+
         m_fileSystemStorageHandleRegistry = makeUnique<FileSystemStorageHandleRegistry>();
         m_storageAreaRegistry = makeUnique<StorageAreaRegistry>();
         m_idbStorageRegistry = makeUnique<IDBStorageRegistry>();
