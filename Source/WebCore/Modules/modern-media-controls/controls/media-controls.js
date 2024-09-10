@@ -205,6 +205,16 @@ class MediaControls extends LayoutNode
         return this.children.some(child => child.element.contains(tappedElement));
     }
 
+    deinitialize()
+    {
+        window.removeEventListener("dragstart", this, true);
+    }
+
+    reinitialize()
+    {
+        window.addEventListener("dragstart", this, true);
+    }
+
     // Protected
 
     handleEvent(event)
